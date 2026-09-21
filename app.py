@@ -263,14 +263,6 @@ DROPDOWN_OPTIONS = {
     "مستوى التعليم للاب": ["امى", "يجيد القراءة", "مؤهل متوسط", "فوق متوسط", "مؤهل عالى"],
     "الوظيفة للام": ["يعمل", "لا تعمل"],
     "مكان الولادة": ["المستشفى", "المنزل"],
-    "سبب دخول الحضانة": [
-        "انخفاض وزن الطفل.", "احتياج الطفل لأدوية محددة بهذا الوقت.",
-        "صعوبة شديدة في التنفس لعدم اكتمال نمو الرئتين.", "ارتفاع درجة حرارة جسم الرضيع.",
-        "تعطل العمليات الحيوية بجسم الطفل.", "انخفاض معدل الجلوكوز في دم الطفل.",
-        "معاناة الرضيع مشكلات في الجهاز الهضمي.", "إصابة الطفل بعدوى في الدم.",
-        "إصابة الطفل بالصفراء.", "حدوث مشكلات خلال الولادة “الولادة المتعسرة أو الحمل الحرج”.",
-        "وجود عيب خلقي يمنع الطفل عن التنفس أو الرضاعة بشكل طبيعي.",
-    ],
     "موعد الزيارة": VISIT_SCHEDULE_OPTIONS,
     "رضاعة طبيعية مع سوائل وأعشاب": ["تم", "لم يتم"],
     "رضاعة طبيعية مع صناعي": ["تم", "لم يتم"],
@@ -286,6 +278,22 @@ DROPDOWN_OPTIONS = {
     "الأنشطة التحفيزية": ["تم", "لم يتم"],
     "إعطاء الجرعة اليومية من الحديد": ["يوجد", "لا يوجد"],
 }
+
+# قائمة أسباب دخول الحضانة مع إضافة خيار فارغ في المقدمة لضمان عدم الاختيار التلقائي
+NURSERY_REASONS = [
+    "",
+    "انخفاض وزن الطفل.",
+    "احتياج الطفل لأدوية محددة بهذا الوقت.",
+    "صعوبة شديدة في التنفس لعدم اكتمال نمو الرئتين.",
+    "ارتفاع درجة حرارة جسم الرضيع.",
+    "تعطل العمليات الحيوية بجسم الطفل.",
+    "انخفاض معدل الجلوكوز في دم الطفل.",
+    "معاناة الرضيع مشكلات في الجهاز الهضمي.",
+    "إصابة الطفل بعدوى في الدم.",
+    "إصابة الطفل بالصفراء.",
+    "حدوث مشكلات خلال الولادة “الولادة المتعسرة أو الحمل الحرج”.",
+    "وجود عيب خلقي يمنع الطفل عن التنفس أو الرضاعة بشكل طبيعي.",
+]
 
 PREGNANT_COLUMNS = [
     "تاريخ التسجيل", "اسم المستخدم", "الاسم", "العنوان", "الرقم القومى", "رقم الموبايل",
@@ -357,7 +365,6 @@ def parse_national_id(nat_id):
             return "", ""
     return "", ""
 
-# دالة حساب العمر الحالي للطفل (شهور أو أيام إذا أقل من شهر)
 def calculate_child_age(birth_date):
     if not birth_date:
         return ""
@@ -377,7 +384,6 @@ def calculate_child_age(birth_date):
     except Exception:
         return ""
 
-# دالة حساب العمر الرحمي للطفل (أسابيع) تلقائياً
 def calculate_gestational_age(birth_date):
     if not birth_date:
         return ""
@@ -581,7 +587,6 @@ elif menu == "سجل الأطفال":
                     if val: st.session_state[f"c_{c_name}"] = str(val)
             st.rerun()
 
-    # تتبع ما إذا تم عرض عنوان المتابعة أو مصدر الإحالة لمنع التكرار
     rendered_followup_header = False
     rendered_referral_header = False
 
@@ -589,14 +594,12 @@ elif menu == "سجل الأطفال":
         if col_name in ["تاريخ التسجيل", "اسم المستخدم", "الرقم القومى للام"]:
             continue
 
-        # إضافة كلمة "المتابعة" قبل اختيارات (وحدة - مستشفى - أخرى)
         if col_name in ["وحدة", "مستشفى", "أخرى"]:
             if not rendered_followup_header:
                 st.markdown("---")
                 st.markdown("### **المتابعة**")
                 rendered_followup_header = True
 
-        # إضافة كلمة "مصدر الاحالة" قبل اختيارات (مستشفى الولادة - عيادة خاصة - عيادة التطعيمات - نصيحة)
         if col_name in ["مستشفى الولادة", "عيادة خاصة", "عيادة التطعيمات", "نصيحة"]:
             if not rendered_referral_header:
                 st.markdown("---")
@@ -641,6 +644,17 @@ elif menu == "سجل الأطفال":
             selected_bf_ex = "3 شهور" if chk_3 else ("4 شهور" if chk_4 else ("6 شهور" if chk_6 else ""))
             st.session_state[f"c_{col_name}"] = selected_bf_ex
 
+        elif col_name == "سبب دخول الحضانة":
+            st.markdown(f"**{col_name}**")
+            current_val = st.session_state.get(f"c_{col_name}", "")
+            chosen_reason = st.selectbox(
+                f"اختر {col_name}", 
+                options=NURSERY_REASONS, 
+                index=NURSERY_REASONS.index(current_val) if current_val in NURSERY_REASONS else 0, 
+                key=f"c_selectbox_{col_name}"
+            )
+            st.session_state[f"c_{col_name}"] = chosen_reason
+
         elif col_name in YES_NO_CHECKBOX_FIELDS:
             checked = st.checkbox(col_name, value=False, key=f"c_chk_{col_name}")
             st.session_state[f"c_{col_name}"] = "نعم" if checked else ""
@@ -664,11 +678,9 @@ elif menu == "سجل الأطفال":
                 chosen_date = st.date_input(col_name, value=datetime.date.today(), key=f"c_date_input_{col_name}")
                 st.session_state[f"c_{col_name}"] = str(chosen_date)
                 
-                # حساب العمر الحالي وتحديثه تلقائياً
                 calculated_age = calculate_child_age(chosen_date)
                 st.session_state["c_العمر الحالى للطفل (شهور)"] = calculated_age
                 
-                # حساب العمر الرحمي وتحديثه تلقائياً
                 calculated_gestational = calculate_gestational_age(chosen_date)
                 st.session_state["c_العمر الرحمى للطفل (أسابيع)"] = calculated_gestational
 

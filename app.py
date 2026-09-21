@@ -279,7 +279,7 @@ DROPDOWN_OPTIONS = {
     "إعطاء الجرعة اليومية من الحديد": ["يوجد", "لا يوجد"],
 }
 
-# الحقول في سجل الأطفال التي ستتحول إلى خيارات "تم" و "لم يتم" في صورة Checkbox
+# الحقول في سجل الأطفال التي تحولت إلى خيارات "تم" و "لم يتم" في صورة اختيار راديوي ثنائي
 CHILD_TAM_LTM_FIELDS = [
     "فوائد الرضاعة الطبيعية والأوضاع و",
     "كفاية اللبن وكمية البراز",
@@ -291,7 +291,6 @@ CHILD_TAM_LTM_FIELDS = [
     "كيفية التعرف على علامات الخطورة"
 ]
 
-# قائمة أسباب دخول الحضانة مع إضافة خيار فارغ في المقدمة لضمان عدم الاختيار التلقائي
 NURSERY_REASONS = [
     "",
     "انخفاض وزن الطفل.",
@@ -630,7 +629,6 @@ elif menu == "سجل الأطفال":
 
     for col in CHILD_COLUMNS:
         if f"c_{col}" not in st.session_state:
-            # إذا كان الحقل من حقول تم/لم يتم، نجعله افتراضياً "لم يتم" أو فارغاً
             if col in CHILD_TAM_LTM_FIELDS:
                 st.session_state[f"c_{col}"] = "لم يتم"
             else:
@@ -674,12 +672,21 @@ elif menu == "سجل الأطفال":
                 st.markdown("### **مصدر الاحالة**")
                 rendered_referral_header = True
 
-        # ==================== التعامل مع حقول (تم / لم يتم) بـ Checkbox ====================
+        # ==================== الحقول المخصصة لخيارات (تم / لم يتم) ====================
         if col_name in CHILD_TAM_LTM_FIELDS:
             st.markdown(f"**{col_name}**")
             current_val = st.session_state.get(f"c_{col_name}", "لم يتم")
-            is_checked = st.checkbox("تم", value=(current_val == "تم"), key=f"c_chk_tam_{col_name}")
-            st.session_state[f"c_{col_name}"] = "تم" if is_checked else "لم يتم"
+            options_list = ["تم", "لم يتم"]
+            default_index = options_list.index(current_val) if current_val in options_list else 1
+            
+            chosen_tam_ltm = st.radio(
+                f"اختر حالة {col_name}", 
+                options_list, 
+                index=default_index, 
+                key=f"c_radio_tam_ltm_{col_name}", 
+                horizontal=True
+            )
+            st.session_state[f"c_{col_name}"] = chosen_tam_ltm
 
         elif col_name == "نوع الولادة":
             st.markdown(f"**{col_name}**")

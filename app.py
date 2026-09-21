@@ -655,11 +655,8 @@ elif menu == "سجل الأطفال":
                 if not st.session_state.get(f"c_{col_name}"):
                     st.session_state[f"c_{col_name}"] = auto_motor
 
-            # التعديل الذكي لاختيار موعد الزيارة تلقائياً بناءً على العمر الأقرب بالشهور
+            # حساب موعد الزيارة وتحديثه تلقائياً دون تثبيت يدوي قديم
             if col_name == "موعد الزيارة":
-                if f"c_{col_name}_manual" not in st.session_state:
-                    st.session_state[f"c_{col_name}_manual"] = False
-                
                 auto_visit_choice = VISIT_SCHEDULE_OPTIONS[0]
                 try:
                     age_str = st.session_state.get("c_العمر الحالى للطفل (شهور)", "")
@@ -667,7 +664,6 @@ elif menu == "سجل الأطفال":
                         if "يوم" in age_str or "أسبوع" in age_str:
                             auto_visit_choice = "الاسبوع الاول"
                         else:
-                            # استخراج القيمة الرقمية للأشهر بدقة (تدعم الكسور مثل 11.5)
                             age_num = float("".join(filter(lambda x: x.isdigit() or x == ".", age_str)) or 0)
                             
                             if age_num < 1.5:
@@ -705,12 +701,11 @@ elif menu == "سجل الأطفال":
                 except Exception:
                     pass
 
-                if not st.session_state.get(f"c_{col_name}_manual", False):
-                    st.session_state[f"c_{col_name}"] = auto_visit_choice
+                # فرض القيمة التلقائية مباشرة بناءً على الحسابات الحديثة
+                st.session_state[f"c_{col_name}"] = auto_visit_choice
 
             st.markdown(f"**{col_name}**")
             
-            # معالجة خاصة لحقل سبب دخول الحضانة بناءً على اختيار دخول الحضانة
             if col_name == "سبب دخول الحضانة":
                 nursery_status = st.session_state.get("c_دخول الحضانة", "لم يتم")
                 if nursery_status == "لم يتم":
@@ -720,11 +715,7 @@ elif menu == "سجل الأطفال":
 
             current_val = st.session_state.get(f"c_{col_name}", options[0])
             
-            def on_visit_change():
-                if col_name == "موعد الزيارة":
-                    st.session_state[f"c_{col_name}_manual"] = True
-
-            chosen_choice = st.radio(f"اختر {col_name}", options, index=options.index(current_val) if current_val in options else 0, key=f"c_radio_{col_name}", horizontal=True, on_change=on_visit_change)
+            chosen_choice = st.radio(f"اختر {col_name}", options, index=options.index(current_val) if current_val in options else 0, key=f"c_radio_{col_name}", horizontal=True)
             st.session_state[f"c_{col_name}"] = chosen_choice
         else:
             if col_name in ["الرقم القومى للام", "الرقم القومى للاب"]:
@@ -810,7 +801,6 @@ elif menu == "سجل الأطفال":
             st.success("تم حفظ بيانات الطفل بنجاح على Supabase! ✨")
             for col in CHILD_COLUMNS:
                 st.session_state[f"c_{col}"] = today_str if col in ["تاريخ الزيارة", "تاريخ اول زيارة"] else ""
-            st.session_state["c_موعد الزيارة_manual"] = False
             st.rerun()
 
 # ==================== 4. استعراض البيانات والداشبورد ====================

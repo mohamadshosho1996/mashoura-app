@@ -963,7 +963,72 @@ elif menu == "استعراض البيانات والداشبورد":
 
         st.info(f"عدد الحالات المطابقة للفترة المحددة: **{len(df_filtered)}** حالة")
         
-        # عرض الجدول المفلتر
+        # عرض الجدول الإحصائي المخصص لسجل الأطفال (المكون من عمودين و 6 صفوف طبقاً للتاريخ المُفلتر)
+        if sheet_to_show == "سجل المشورة للاطفال":
+            st.markdown("---")
+            st.subheader("📈 مؤشرات سجل الأطفال (حسب الفترة المفلترة)")
+            
+            # حساب الإحصائيات من البيانات المفلترة
+            total_children = len(df_filtered)
+            
+            # عدد حالات دخول الحضانة (دخول الحضانة == تم أو نعم)
+            nursery_col = "دخول الحضانة"
+            nursery_count = 0
+            if nursery_col in df_filtered.columns:
+                nursery_count = df_filtered[nursery_col].astype(str).str.strip().isin(["تم", "نعم"]).sum()
+
+            # ملامسة الجلد فى الساعه الذهبية الاولى
+            skin_col = "ملامسة الجلد فى الساعة الذهبية الأ"
+            skin_count = 0
+            if skin_col in df_filtered.columns:
+                skin_count = df_filtered[skin_col].astype(str).str.strip().isin(["تم", "نعم"]).sum()
+
+            # الرضاعه الطبيعيه فى الساعه الذهبية الاولى
+            bf_golden_col = "الرضاعة الطبيعية فى الساعة الذهبي"
+            bf_golden_count = 0
+            if bf_golden_col in df_filtered.columns:
+                bf_golden_count = df_filtered[bf_golden_col].astype(str).str.strip().isin(["تم", "نعم"]).sum()
+
+            # رضاعة طبيعية مطلقة 6 شهور
+            bf_ex_col = "رضاعة طبيعية مطلقة"
+            bf_6m_count = 0
+            if bf_ex_col in df_filtered.columns:
+                bf_6m_count = (df_filtered[bf_ex_col].astype(str).str.strip() == "6 شهور").sum()
+
+            # التحويل الى عيادة تنظيم الاسرة (نصيحة أو عيادة تنظيم أسرة)
+            family_plan_count = 0
+            fp_col1 = "أهمية إستخدام وسيلة تنظيم أسرة وأه"
+            fp_col2 = "نصيحة"
+            if fp_col1 in df_filtered.columns:
+                family_plan_count += df_filtered[fp_col1].astype(str).str.strip().isin(["تم", "نعم"]).sum()
+            elif fp_col2 in df_filtered.columns:
+                family_plan_count += df_filtered[fp_col2].astype(str).str.strip().isin(["تم", "نعم"]).sum()
+
+            # إنشاء DataFrame بالجدول المطلوب (عمودين و 6 صفوف)
+            summary_table_data = {
+                "البيان / المؤشر": [
+                    "إجمالي عدد حالات الاطفال",
+                    "عدد حالات دخول الحضانه",
+                    "عدد حالات ملامسة الجلد فى الساعه الذهبية الاولى",
+                    "عدد حالات الرضاعه الطبيعيه فى الساعه الذهبية الاولى",
+                    "عدد حالات رضاعة طبيعية مطلقة 6 شهور",
+                    "عدد حالات التحويل الى عيادة تنظيم الاسرة"
+                ],
+                "عدد الحالات (حسب التاريخ المفلتر)": [
+                    total_children,
+                    nursery_count,
+                    skin_count,
+                    bf_golden_count,
+                    bf_6m_count,
+                    family_plan_count
+                ]
+            }
+            df_summary = pd.DataFrame(summary_table_data)
+            st.table(df_summary)
+
+        # عرض الجدول التفصيلي الكامل
+        st.markdown("---")
+        st.subheader("📋 الجدول التفصيلي للبيانات")
         st.dataframe(df_filtered, use_container_width=True)
 
         # زر تصدير إلى Excel
@@ -994,7 +1059,7 @@ elif menu == "استعراض البيانات والداشبورد":
         else:
             st.write("لا توجد بيانات كافية لعرض إحصائيات المستخدمين.")
 
-        # قسم حذف الحالات (متاح للأدمن أو عام حسب الرغبة)
+        # قسم حذف الحالات
         st.markdown("---")
         st.subheader("🗑️ حذف حالة من السجل")
         col_del1, col_del2 = st.columns(2)
@@ -1007,7 +1072,6 @@ elif menu == "استعراض البيانات والداشبورد":
             if st.button("حذف الصف المحدد", key="btn_del_idx"):
                 if not df_filtered.empty:
                     target_row = df_filtered.iloc[row_idx_to_delete]
-                    # محاولة البحث عن معرف أو الرقم القومي للحذف من قاعدة البيانات
                     identifier_val = target_row.get(id_column, target_row.get("id", None))
                     if identifier_val:
                         if delete_row_from_supabase(sheet_to_show, identifier_val, id_column):

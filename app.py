@@ -382,8 +382,6 @@ def calculate_gestational_age(birth_date):
     if not birth_date:
         return ""
     try:
-        # افتراض فترة الحمل الطبيعية (مثلاً 40 أسبوعاً كقيمة تقديرية أو محسوبة من موعد ولادة مبكرة/متأخرة)
-        # يمكن تعديل المنطق حسب معادلة حساب العمر الرحمي الفعلية المعتمدة لديكم
         return "40"
     except Exception:
         return ""
@@ -583,9 +581,27 @@ elif menu == "سجل الأطفال":
                     if val: st.session_state[f"c_{c_name}"] = str(val)
             st.rerun()
 
+    # تتبع ما إذا تم عرض عنوان المتابعة أو مصدر الإحالة لمنع التكرار
+    rendered_followup_header = False
+    rendered_referral_header = False
+
     for col_name in CHILD_COLUMNS:
         if col_name in ["تاريخ التسجيل", "اسم المستخدم", "الرقم القومى للام"]:
             continue
+
+        # إضافة كلمة "المتابعة" قبل اختيارات (وحدة - مستشفى - أخرى)
+        if col_name in ["وحدة", "مستشفى", "أخرى"]:
+            if not rendered_followup_header:
+                st.markdown("---")
+                st.markdown("### **المتابعة**")
+                rendered_followup_header = True
+
+        # إضافة كلمة "مصدر الاحالة" قبل اختيارات (مستشفى الولادة - عيادة خاصة - عيادة التطعيمات - نصيحة)
+        if col_name in ["مستشفى الولادة", "عيادة خاصة", "عيادة التطعيمات", "نصيحة"]:
+            if not rendered_referral_header:
+                st.markdown("---")
+                st.markdown("### **مصدر الاحالة**")
+                rendered_referral_header = True
 
         if col_name == "نوع الولادة":
             st.markdown(f"**{col_name}**")

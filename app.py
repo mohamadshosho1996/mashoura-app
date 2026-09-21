@@ -120,7 +120,7 @@ footer {visibility: hidden;}
 
 .shaimaa-text {
     position: absolute;
-    font-size: 4rem;
+    font-size: 3.5rem;
     font-weight: 900;
     color: #ffffff;
     text-shadow: 0 0 20px #ff0055, 0 0 40px #ff0055, 0 0 60px #ff3366;
@@ -129,6 +129,7 @@ footer {visibility: hidden;}
     animation: showText 1.2s 0.8s ease-out forwards;
     font-family: 'Cairo', sans-serif;
     letter-spacing: 2px;
+    white-space: nowrap;
 }
 
 @keyframes shootArrow {
@@ -453,7 +454,7 @@ if st.session_state.show_shaimaa_animation:
             <div class="heart-container">
                 <div class="arrow"></div>
                 <div class="giant-heart"></div>
-                <div class="shaimaa-text">شيماء</div>
+                <div class="shaimaa-text">د. شيماء</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -550,6 +551,7 @@ elif menu == "سجل الحوامل":
                 st.text_input(col_name, key=f"p_{col_name}")
 
     if st.button("💾 حفظ بيانات الحامل", use_container_width=True):
+        st.session_state.show_shaimaa_animation = True
         final_form_data = {}
         for col in PREGNANT_COLUMNS:
             if col == "تاريخ التسجيل":
@@ -655,7 +657,6 @@ elif menu == "سجل الأطفال":
                 if not st.session_state.get(f"c_{col_name}"):
                     st.session_state[f"c_{col_name}"] = auto_motor
 
-            # حساب موعد الزيارة وتحديثه تلقائياً دون تثبيت يدوي قديم
             if col_name == "موعد الزيارة":
                 auto_visit_choice = VISIT_SCHEDULE_OPTIONS[0]
                 try:
@@ -701,7 +702,6 @@ elif menu == "سجل الأطفال":
                 except Exception:
                     pass
 
-                # فرض القيمة التلقائية مباشرة بناءً على الحسابات الحديثة
                 st.session_state[f"c_{col_name}"] = auto_visit_choice
 
             st.markdown(f"**{col_name}**")
@@ -799,6 +799,7 @@ elif menu == "سجل الأطفال":
 
         if save_new_row("سجل المشورة للاطفال", final_child_data):
             st.success("تم حفظ بيانات الطفل بنجاح على Supabase! ✨")
+            # تفريغ الحقول وإعادتها لقيمها الافتراضية لاستقبال حالة جديدة
             for col in CHILD_COLUMNS:
                 st.session_state[f"c_{col}"] = today_str if col in ["تاريخ الزيارة", "تاريخ اول زيارة"] else ""
             st.rerun()

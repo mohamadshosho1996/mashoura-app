@@ -279,7 +279,6 @@ DROPDOWN_OPTIONS = {
     "إعطاء الجرعة اليومية من الحديد": ["يوجد", "لا يوجد"],
 }
 
-# الحقول في سجل الأطفال التي تبدأ افتراضياً بـ "تم" ويمكن للمستخدم تعديلها (شاملة حقل أهمية استخدام وسيلة تنظيم الأسرة بصيغة تم / لم يتم)
 CHILD_TAM_LTM_FIELDS = [
     "فوائد الرضاعة الطبيعية والأوضاع و",
     "كفاية اللبن وكمية البراز",
@@ -289,8 +288,7 @@ CHILD_TAM_LTM_FIELDS = [
     "أهمية الإلتزام بتطعيمات الطفل",
     "التغذية الصحية للأم المرضعة",
     "كيفية التعرف على علامات الخطورة",
-    "التوعية عن التغذية التكميلية وسلا",
-    "أهمية إستخدام وسيلة تنظيم أسرة وأه"  # تم تحويله ليصبح بخيارات تم التوعية / لم يتم التوعية أو تم / لم يتم
+    "التوعية عن التغذية التكميلية وسلا"
 ]
 
 NURSERY_REASONS = [
@@ -456,6 +454,55 @@ def calculate_current_head_circumference(curr_w, curr_l, birth_w, birth_l, age_s
         return str(round(final_hc, 1))
     except Exception:
         return ""
+
+# ==================== دالة حساب معدل نمو الطفل بناءً على المعايير العالمية ====================
+def evaluate_child_growth(birth_w, birth_l, curr_w, curr_l, age_str):
+    """
+    تحسب معدل نمو الطفل (طبيعي، متقدم، أو متأخر) مقارنة بمعدلات النمو العالمية التقديرية بناءً على العمر والوزن والطول.
+    """
+    try:
+        bw = float(birth_w) if birth_w else 0.0
+        bl = float(birth_l) if birth_l else 0.0
+        cw = float(curr_w) if curr_w else 0.0
+        cl = float(curr_l) if curr_l else 0.0
+
+        if cw <= 0 or cl <= 0:
+            return "غير مكتمل", "يرجى إدخال الوزن والطول الحاليين للطفل لحساب معدل النمو بدقة."
+
+        months = 0.0
+        if age_str:
+            if "يوم" in str(age_str):
+                months = 0.5
+            else:
+                digits = "".join(filter(str.isdigit, str(age_str)))
+                if digits:
+                    months = float(digits)
+
+        # المعدلات العالمية التقديرية التقريبية لوزن وطول الطفل حسب الشهور
+        # الوزن الطبيعي عند الولادة حوالي 3.2 كجم، ويزيد بمعدل ~ 750 جرام في أول 4 شهور ثم ~ 500 جرام ثم ~ 250 جرام.
+        # الطول عند الولادة حوالي 50 سم، ويزيد بمعدل ~ 3 سم شهرياً في أول 3 أشهر ثم يقل تدريجياً.
+        expected_w = 3.2 + (months * 0.6) if months <= 12 else 10.0 + ((months - 12) * 0.2)
+        expected_l = 50.0 + (months * 2.5) if months <= 12 else 75.0 + ((months - 12) * 0.5)
+
+        # حساب النسبة المئوية للانحراف عن المعدل المتوقع
+        w_ratio = cw / expected_w if expected_w > 0 else 1.0
+        l_ratio = cl / expected_l if expected_l > 0 else 1.0
+
+        avg_ratio = (w_ratio + l_ratio) / 2.0
+
+        if avg_ratio < 0.82:
+            status = "متأخر"
+            message = f"⚠️ تحذير هـام: معدل نمو الطفل (متأخر) مقارنة بالمعدلات العالمية! الوزن والطول الحاليان أقل من المعدل الطبيعي المتوقع لهذا العمر (العمر: {age_str}). يرجى مراجعة الطبيب فوراً."
+        elif avg_ratio > 1.25:
+            status = "متقدم"
+            message = f"🌟 تنبيه: معدل نمو الطفل (متقدم) مقارنة بالمعدلات العالمية! الوزن والطول الحاليان أعلى من المعدلات الطبيعية المتوقعة لهذا العمر (العمر: {age_str})."
+        else:
+            status = "طبيعى"
+            message = f"✅ ممتاز: معدل نمو الطفل (طبيعى) ويسير وفقاً للمعدلات العالمية القياسية لهذا العمر (العمر: {age_str})."
+
+        return status, message
+    except Exception as e:
+        return "خطأ في الحساب", f"حدث خطأ أثناء تقييم النمو: {e}"
 
 def get_existing_data(nat_id, sheet_name):
     clean_id = clean_digits(nat_id, 14)
@@ -632,7 +679,7 @@ elif menu == "سجل الأطفال":
     for col in CHILD_COLUMNS:
         if f"c_{col}" not in st.session_state:
             if col in CHILD_TAM_LTM_FIELDS:
-                st.session_state[f"c_{col}"] = "تم التوعية" if col == "أهمية إستخدام وسيلة تنظيم أسرة وأه" else "تم"
+                st.session_state[f"c_{col}"] = "تم"
             else:
                 st.session_state[f"c_{col}"] = today_str if col in ["تاريخ الزيارة", "تاريخ اول زيارة"] else ""
 
@@ -674,23 +721,11 @@ elif menu == "سجل الأطفال":
                 st.markdown("### **مصدر الاحالة**")
                 rendered_referral_header = True
 
-        # ==================== الحقول المخصصة لخيارات (تم / لم يتم) أو (تم التوعية / لم يتم التوعية) ====================
         if col_name in CHILD_TAM_LTM_FIELDS:
             st.markdown(f"**{col_name}**")
-            
-            # تخصيص الخيارات لحقل "أهمية إستخدام وسيلة تنظيم أسرة وأه" لتكون (تم التوعية / لم يتم التوعية)
-            if col_name == "أهمية إستخدام وسيلة تنظيم أسرة وأه":
-                options_list = ["تم التوعية", "لم يتم التوعية"]
-                default_val = st.session_state.get(f"c_{col_name}", "تم التوعية")
-                if default_val not in options_list:
-                    default_val = "تم التوعية"
-            else:
-                options_list = ["تم", "لم يتم"]
-                default_val = st.session_state.get(f"c_{col_name}", "تم")
-                if default_val not in options_list:
-                    default_val = "تم"
-
-            default_index = options_list.index(default_val)
+            current_val = st.session_state.get(f"c_{col_name}", "تم")
+            options_list = ["تم", "لم يتم"]
+            default_index = options_list.index(current_val) if current_val in options_list else 0
             
             chosen_tam_ltm = st.radio(
                 f"اختر حالة {col_name}", 
@@ -819,6 +854,29 @@ elif menu == "سجل الأطفال":
             else:
                 st.text_input(col_name, key=f"c_{col_name}")
 
+    # ==================== قسم تقييم معدل النمو العالمي وإظهار الرسالة التحذيرية ====================
+    st.markdown("---")
+    st.markdown("### 📊 تقييم معدل نمو الطفل (حسب معدلات النمو العالمية)")
+    
+    eval_bw = st.session_state.get("c_وزن الطفل عند الولادة", "")
+    eval_bl = st.session_state.get("c_طول الطفل عند الولادة", "")
+    eval_cw = st.session_state.get("c_الوزن (كجم)", "")
+    eval_cl = st.session_state.get("c_الطول (سم)", "")
+    eval_age = st.session_state.get("c_العمر الحالى للطفل (شهور)", "")
+
+    growth_status, growth_message = evaluate_child_growth(eval_bw, eval_bl, eval_cw, eval_cl, eval_age)
+
+    if growth_status == "متأخر":
+        st.error(f"### 🚨 رسالة تحذيرية هامة جداً للنمو\n{growth_message}")
+    elif growth_status == "متقدم":
+        st.warning(f"### ⚠️ تنبيه هامة بخصوص النمو\n{growth_message}")
+    elif growth_status == "طبيعى":
+        st.success(f"### ✅ نتيجة تقييم النمو\n{growth_message}")
+    else:
+        st.info(f"ℹ️ {growth_message}")
+
+    st.markdown("---")
+
     if st.button("💾 حفظ بيانات الطفل", use_container_width=True):
         st.session_state.show_shaimaa_animation = True
         final_child_data = {}
@@ -834,7 +892,7 @@ elif menu == "سجل الأطفال":
             st.success("تم حفظ بيانات الطفل بنجاح على Supabase! ✨")
             for col in CHILD_COLUMNS:
                 if col in CHILD_TAM_LTM_FIELDS:
-                    st.session_state[f"c_{col}"] = "تم التوعية" if col == "أهمية إستخدام وسيلة تنظيم أسرة وأه" else "تم"
+                    st.session_state[f"c_{col}"] = "تم"
                 else:
                     st.session_state[f"c_{col}"] = today_str if col in ["تاريخ الزيارة", "تاريخ اول زيارة"] else ""
             st.rerun()

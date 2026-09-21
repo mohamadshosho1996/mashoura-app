@@ -3,6 +3,7 @@ import os
 import pandas as pd
 import streamlit as st
 from supabase import create_client, Client
+from io import BytesIO
 
 # ==================== إعدادات الصفحة والتصميم ====================
 st.set_page_config(
@@ -201,6 +202,17 @@ def save_new_row(sheet_name, row_dict):
         st.error(f"حدث خطأ أثناء الحفظ في Supabase: {e}")
     return False
 
+def delete_row_from_supabase(sheet_name, record_id, id_column_name):
+    if not supabase:
+        return False
+    try:
+        table_name = TABLE_PREGNANT if sheet_name == "المشورة الاسرية للحامل" else TABLE_CHILD
+        response = supabase.table(table_name).delete().eq(id_column_name, record_id).execute()
+        return True
+    except Exception as e:
+        st.error(f"حدث خطأ أثناء الحذف من Supabase: {e}")
+    return False
+
 # ==================== الثوابت وإعدادات البيانات ====================
 DEFAULT_USERS = {
     "admin": {"pass": "admin123", "role": "admin", "name": "د. شيماء 🌸"},
@@ -384,7 +396,6 @@ def calculate_child_age(birth_date):
         delta_days = (today - birth_date).days
         if delta_days < 0:
             return "0 يوم"
-        
         if delta_days < 30:
             return f"{delta_days} يوم"
         else:
@@ -479,7 +490,6 @@ def evaluate_child_growth(birth_w, birth_l, curr_w, curr_l, age_str):
 
         w_ratio = cw / expected_w if expected_w > 0 else 1.0
         l_ratio = cl / expected_l if expected_l > 0 else 1.0
-
         avg_ratio = (w_ratio + l_ratio) / 2.0
 
         if avg_ratio < 0.82:
@@ -594,7 +604,6 @@ elif menu == "سجل الحوامل":
         if f"p_{col}" not in st.session_state:
             st.session_state[f"p_{col}"] = today_str if col == "التاريخ الزيارة" else ""
 
-    # زر تفريغ بيانات الحقول في أول الواجهة
     if st.button("🧹 تفريغ جميع الحقول (حوامل)", key="clear_pregnant_fields"):
         for col in PREGNANT_COLUMNS:
             st.session_state[f"p_{col}"] = today_str if col == "التاريخ الزيارة" else ""
@@ -694,7 +703,6 @@ elif menu == "سجل الأطفال":
             else:
                 st.session_state[f"c_{col}"] = today_str if col in ["تاريخ الزيارة", "تاريخ اول زيارة"] else ""
 
-    # زر تفريغ بيانات الحقول في أول واجهة الأطفال
     if st.button("🧹 تفريغ جميع الحقول (أطفال)", key="clear_child_fields"):
         for col in CHILD_COLUMNS:
             if col in CHILD_TAM_LTM_FIELDS:
@@ -847,18 +855,15 @@ elif menu == "سجل الأطفال":
             elif col_name == "العمر الحالى للطفل (شهور)":
                 current_age_val = st.session_state.get(f"c_{col_name}", "")
                 st.text_input(f"{col_name} [محسوب تلقائياً بالشهور أو الأيام]", value=current_age_val, key=f"c_{col_name}", disabled=True)
-            
             elif col_name == "العمر الرحمى للطفل (أسابيع)":
                 current_gest_val = st.session_state.get(f"c_{col_name}", "")
                 st.text_input(f"{col_name} [محسوب تلقائياً]", value=current_gest_val, key=f"c_{col_name}", disabled=True)
-            
             elif col_name == "مقاس راس الطفل عند الولادة":
                 w_val = st.session_state.get("c_وزن الطفل عند الولادة", "")
                 l_val = st.session_state.get("c_طول الطفل عند الولادة", "")
                 calc_head = calculate_head_circumference(w_val, l_val)
                 st.session_state[f"c_{col_name}"] = calc_head
                 st.text_input(f"{col_name} [محسوب تلقائياً من الوزن والطول]", value=calc_head, key=f"c_{col_name}", disabled=True)
-            
             elif col_name == "محيط الرأس (سم)":
                 c_curr_w = st.session_state.get("c_الوزن (كجم)", "")
                 c_curr_l = st.session_state.get("c_الطول (سم)", "")
@@ -867,13 +872,8 @@ elif menu == "سجل الأطفال":
                 c_age = st.session_state.get("c_العمر الحالى للطفل (شهور)", "")
                 
                 auto_current_hc = calculate_current_head_circumference(
-                    curr_w=c_curr_w, 
-                    curr_l=c_curr_l, 
-                    birth_w=c_birth_w, 
-                    birth_l=c_birth_l, 
-                    age_str=c_age
+                    curr_w=c_curr_w, curr_l=c_curr_l, birth_w=c_birth_w, birth_l=c_birth_l, age_str=c_age
                 )
-                
                 if f"c_{col_name}" not in st.session_state or not st.session_state[f"c_{col_name}"]:
                     st.session_state[f"c_{col_name}"] = auto_current_hc
                 
@@ -932,7 +932,107 @@ elif menu == "استعراض البيانات والداشبورد":
     sheet_to_show = st.selectbox("اختر السجل للاستعراض:", ["المشورة الاسرية للحامل", "سجل المشورة للاطفال"])
     df_view = load_sheet_df(sheet_to_show)
 
-    st.dataframe(df_view, use_container_width=True)
+    if not df_view.empty:
+        st.markdown("---")
+        st.subheader("📅 فلترة الحالات حسب الفترة الزمنية")
+        
+        # تحديد حقل التاريخ المتاح
+        date_col_candidates = ["التاريخ الزيارة", "تاريخ التسجيل", "تاريخ اول زيارة"]
+        selected_date_col = next((c for c in date_col_candidates if c in df_view.columns), None)
+        
+        if selected_date_col:
+            try:
+                df_view['parsed_date'] = pd.to_datetime(df_view[selected_date_col], errors='coerce').dt.date
+                min_d = df_view['parsed_date'].min()
+                max_d = df_view['parsed_date'].max()
+                if pd.isna(min_d): min_d = datetime.date.today()
+                if pd.isna(max_d): max_d = datetime.date.today()
+
+                col_f1, col_f2 = st.columns(2)
+                with col_f1:
+                    start_date = st.date_input("من تاريخ", value=min_d)
+                with col_f2:
+                    end_date = st.date_input("إلى تاريخ", value=max_d)
+
+                mask = (df_view['parsed_date'] >= start_date) & (df_view['parsed_date'] <= end_date)
+                df_filtered = df_view.loc[mask].drop(columns=['parsed_date'])
+            except Exception:
+                df_filtered = df_view.copy()
+        else:
+            df_filtered = df_view.copy()
+
+        st.info(f"عدد الحالات المطابقة للفترة المحددة: **{len(df_filtered)}** حالة")
+        
+        # عرض الجدول المفلتر
+        st.dataframe(df_filtered, use_container_width=True)
+
+        # زر تصدير إلى Excel
+        st.markdown("---")
+        st.subheader("📥 تصدير البيانات")
+        output = BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df_filtered.to_excel(writer, index=False, sheet_name='Sheet1')
+        excel_data = output.getvalue()
+
+        st.download_button(
+            label="📊 تحميل البيانات الحالية بصيغة Excel (XLSX)",
+            data=excel_data,
+            file_name=f"report_{sheet_to_show}_{datetime.date.today()}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+
+        # جدول إحصائي لعدد الحالات لكل مستخدم
+        st.markdown("---")
+        st.subheader("👥 إحصائيات عدد الحالات لكل مستخدم خلال الفترة")
+        user_col_candidates = ["اسم المستخدم"]
+        user_col = next((c for c in user_col_candidates if c in df_filtered.columns), None)
+        if user_col and not df_filtered.empty:
+            user_counts = df_filtered[user_col].value_counts().reset_index()
+            user_counts.columns = ["اسم المستخدم", "عدد الحالات"]
+            st.dataframe(user_counts, use_container_width=True)
+        else:
+            st.write("لا توجد بيانات كافية لعرض إحصائيات المستخدمين.")
+
+        # قسم حذف الحالات (متاح للأدمن أو عام حسب الرغبة)
+        st.markdown("---")
+        st.subheader("🗑️ حذف حالة من السجل")
+        col_del1, col_del2 = st.columns(2)
+        
+        id_column = "الرقم القومى" if sheet_to_show == "المشورة الاسرية للحامل" else "الرقم القومى للام"
+
+        with col_del1:
+            st.markdown("##### الحذف برقم الصف (Index)")
+            row_idx_to_delete = st.number_input("أدخل رقم الصف في الجدول المعروض", min_value=0, max_value=max(0, len(df_filtered)-1), step=1, key="del_by_idx")
+            if st.button("حذف الصف المحدد", key="btn_del_idx"):
+                if not df_filtered.empty:
+                    target_row = df_filtered.iloc[row_idx_to_delete]
+                    # محاولة البحث عن معرف أو الرقم القومي للحذف من قاعدة البيانات
+                    identifier_val = target_row.get(id_column, target_row.get("id", None))
+                    if identifier_val:
+                        if delete_row_from_supabase(sheet_to_show, identifier_val, id_column):
+                            st.success(f"تم حذف الحالة التي تحمل الرقم القومي/المعرف: {identifier_val} بنجاح!")
+                            st.rerun()
+                        else:
+                            st.error("فشل حذف الحالة من قاعدة البيانات.")
+                    else:
+                        st.error("تعرّف على معرف الحالة تعذر.")
+
+        with col_del2:
+            st.markdown(f"##### الحذف برقم القومي ({id_column})")
+            nat_id_to_delete = st.text_input("أدخل الرقم القومى للحالة المراد حذفها", key="del_by_nat_id")
+            if st.button("حذف بالرقم القومي", key="btn_del_nat"):
+                cleaned_del_id = clean_digits(nat_id_to_delete, 14)
+                if len(cleaned_del_id) == 14:
+                    if delete_row_from_supabase(sheet_to_show, cleaned_del_id, id_column):
+                        st.success(f"تم حذف الحالة ذات الرقم القومي {cleaned_del_id} بنجاح!")
+                        st.rerun()
+                    else:
+                        st.error("لم يتم العثور على الحالة أو حدث خطأ أثناء الحذف.")
+                else:
+                    st.error("يرجى إدخال رقم قومي صحيح مكون من 14 رقماً.")
+    else:
+        st.warning("لا توجد بيانات متاحة في هذا السجل حالياً.")
 
 # ==================== 5. إدارة المستخدمين ====================
 elif menu == "إدارة المستخدمين" and st.session_state.role == "admin":

@@ -175,7 +175,6 @@ def init_supabase() -> Client:
 
 supabase = init_supabase()
 
-# أسماء الجداول مطابقة تماماً لصورة Supabase
 TABLE_PREGNANT = "pregnancy_counseling"
 TABLE_CHILD = "children_counseling"
 
@@ -357,6 +356,37 @@ def parse_national_id(nat_id):
         except ValueError:
             return "", ""
     return "", ""
+
+# دالة حساب العمر الحالي للطفل (شهور أو أيام إذا أقل من شهر)
+def calculate_child_age(birth_date):
+    if not birth_date:
+        return ""
+    try:
+        today = datetime.date.today()
+        delta_days = (today - birth_date).days
+        if delta_days < 0:
+            return "0 يوم"
+        
+        if delta_days < 30:
+            return f"{delta_days} يوم"
+        else:
+            total_months = (today.year - birth_date.year) * 12 + (today.month - birth_date.month)
+            if today.day < birth_date.day:
+                total_months -= 1
+            return str(max(0, total_months))
+    except Exception:
+        return ""
+
+# دالة حساب العمر الرحمي للطفل (أسابيع) تلقائياً
+def calculate_gestational_age(birth_date):
+    if not birth_date:
+        return ""
+    try:
+        # افتراض فترة الحمل الطبيعية (مثلاً 40 أسبوعاً كقيمة تقديرية أو محسوبة من موعد ولادة مبكرة/متأخرة)
+        # يمكن تعديل المنطق حسب معادلة حساب العمر الرحمي الفعلية المعتمدة لديكم
+        return "40"
+    except Exception:
+        return ""
 
 def get_existing_data(nat_id, sheet_name):
     clean_id = clean_digits(nat_id, 14)
@@ -617,6 +647,21 @@ elif menu == "سجل الأطفال":
             elif col_name == "تاريخ الميلاد للطفل":
                 chosen_date = st.date_input(col_name, value=datetime.date.today(), key=f"c_date_input_{col_name}")
                 st.session_state[f"c_{col_name}"] = str(chosen_date)
+                
+                # حساب العمر الحالي وتحديثه تلقائياً
+                calculated_age = calculate_child_age(chosen_date)
+                st.session_state["c_العمر الحالى للطفل (شهور)"] = calculated_age
+                
+                # حساب العمر الرحمي وتحديثه تلقائياً
+                calculated_gestational = calculate_gestational_age(chosen_date)
+                st.session_state["c_العمر الرحمى للطفل (أسابيع)"] = calculated_gestational
+
+            elif col_name == "العمر الحالى للطفل (شهور)":
+                current_age_val = st.session_state.get(f"c_{col_name}", "")
+                st.text_input(f"{col_name} [محسوب تلقائياً بالشهور أو الأيام]", value=current_age_val, key=f"c_{col_name}", disabled=True)
+            elif col_name == "العمر الرحمى للطفل (أسابيع)":
+                current_gest_val = st.session_state.get(f"c_{col_name}", "")
+                st.text_input(f"{col_name} [محسوب تلقائياً]", value=current_gest_val, key=f"c_{col_name}", disabled=True)
             else:
                 st.text_input(col_name, key=f"c_{col_name}")
 

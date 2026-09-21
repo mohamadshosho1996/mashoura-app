@@ -655,6 +655,7 @@ elif menu == "سجل الأطفال":
                 if not st.session_state.get(f"c_{col_name}"):
                     st.session_state[f"c_{col_name}"] = auto_motor
 
+            # التعديل الذكي لاختيار موعد الزيارة تلقائياً بناءً على العمر الأقرب بالشهور
             if col_name == "موعد الزيارة":
                 if f"c_{col_name}_manual" not in st.session_state:
                     st.session_state[f"c_{col_name}_manual"] = False
@@ -666,22 +667,41 @@ elif menu == "سجل الأطفال":
                         if "يوم" in age_str or "أسبوع" in age_str:
                             auto_visit_choice = "الاسبوع الاول"
                         else:
+                            # استخراج القيمة الرقمية للأشهر بدقة (تدعم الكسور مثل 11.5)
                             age_num = float("".join(filter(lambda x: x.isdigit() or x == ".", age_str)) or 0)
-                            if age_num <= 2: auto_visit_choice = "عمر شهرين"
-                            elif age_num <= 4: auto_visit_choice = "عمر 4 شهور"
-                            elif age_num <= 6: auto_visit_choice = "عمر 6 شهور"
-                            elif age_num <= 9: auto_visit_choice = "عمر 9 شهور"
-                            elif age_num <= 12: auto_visit_choice = "عمر 12 شهر"
-                            elif age_num <= 18: auto_visit_choice = "عمر 18 شهر"
-                            elif age_num <= 24: auto_visit_choice = "عمر سنتين"
-                            elif age_num <= 30: auto_visit_choice = "عمر سنتين ونصف"
-                            elif age_num <= 36: auto_visit_choice = "عمر 3 سنين"
-                            elif age_num <= 42: auto_visit_choice = "عمر 3 سنين ونصف"
-                            elif age_num <= 48: auto_visit_choice = "عمر 4 سنين"
-                            elif age_num <= 54: auto_visit_choice = "عمر 4 سنين ونصف"
-                            elif age_num <= 60: auto_visit_choice = "عمر 5 سنين"
-                            elif age_num <= 66: auto_visit_choice = "عمر 5 سنين ونصف"
-                            else: auto_visit_choice = "عمر 6 سنين"
+                            
+                            if age_num < 1.5:
+                                auto_visit_choice = "الاسبوع الاول"
+                            elif age_num <= 3:
+                                auto_visit_choice = "عمر شهرين"
+                            elif age_num <= 5:
+                                auto_visit_choice = "عمر 4 شهور"
+                            elif age_num <= 7.5:
+                                auto_visit_choice = "عمر 6 شهور"
+                            elif age_num <= 10.5:
+                                auto_visit_choice = "عمر 9 شهور"
+                            elif age_num <= 15:
+                                auto_visit_choice = "عمر 12 شهر"
+                            elif age_num <= 21:
+                                auto_visit_choice = "عمر 18 شهر"
+                            elif age_num <= 27:
+                                auto_visit_choice = "عمر سنتين"
+                            elif age_num <= 33:
+                                auto_visit_choice = "عمر سنتين ونصف"
+                            elif age_num <= 39:
+                                auto_visit_choice = "عمر 3 سنين"
+                            elif age_num <= 45:
+                                auto_visit_choice = "عمر 3 سنين ونصف"
+                            elif age_num <= 51:
+                                auto_visit_choice = "عمر 4 سنين"
+                            elif age_num <= 57:
+                                auto_visit_choice = "عمر 4 سنين ونصف"
+                            elif age_num <= 63:
+                                auto_visit_choice = "عمر 5 سنين"
+                            elif age_num <= 69:
+                                auto_visit_choice = "عمر 5 سنين ونصف"
+                            else:
+                                auto_visit_choice = "عمر 6 سنين"
                 except Exception:
                     pass
 
@@ -696,7 +716,7 @@ elif menu == "سجل الأطفال":
                 if nursery_status == "لم يتم":
                     st.session_state[f"c_{col_name}"] = ""
                     st.info("تم إلغاء اختيار سبب دخول الحضانة لأن حالة (دخول الحضانة) هي 'لم يتم'.")
-                    continue  # تخطي عرض الـ radio لسبب دخول الحضانة
+                    continue  
 
             current_val = st.session_state.get(f"c_{col_name}", options[0])
             

@@ -162,20 +162,20 @@ footer {visibility: hidden;}
 """
 st.markdown(custom_css, unsafe_allow_html=True)
 
-# ==================== إعدادات الاتصال بـ Supabase (مطابقة لأسماء الجداول في الصور) ====================
+# ==================== إعدادات الاتصال المباشر بـ Supabase ====================
 @st.cache_resource
 def init_supabase() -> Client:
     try:
-        url = st.secrets["supabase"]["url"]
-        key = st.secrets["supabase"]["key"]
+        url = "https://qwlswmhloulmmencdyfq.supabase.co"
+        key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF3bHN3bWhsb3VsbW1lbmNkeWZxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk5NzYyMzYsImV4cCI6MjEwNTU1MjIzNn0.K6eSsf_Jtxr8RhDDhSxeyTdGc64xuZaiE3d1UgHxUZY"
         return create_client(url, key)
     except Exception as e:
-        st.error(f"خطأ في إعدادات الاتصال بـ Supabase: تأكد من الـ Secrets. التفاصيل: {e}")
+        st.error(f"خطأ في إعدادات الاتصال بـ Supabase: {e}")
         return None
 
 supabase = init_supabase()
 
-# أسماء الجداول مطابقة تماماً لصورة Supabase (بدون أي إضافات)
+# أسماء الجداول مطابقة تماماً لصورة Supabase
 TABLE_PREGNANT = "pregnancy_counseling"
 TABLE_CHILD = "children_counseling"
 

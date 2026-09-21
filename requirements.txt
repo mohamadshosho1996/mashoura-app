@@ -1,0 +1,6 @@
+streamlit
+pandas
+openpyxl
+matplotlib
+streamlit-mic-recorder
+supabase

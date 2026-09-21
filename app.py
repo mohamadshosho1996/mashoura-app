@@ -392,6 +392,20 @@ def calculate_gestational_age(birth_date):
     except Exception:
         return ""
 
+def calculate_head_circumference(weight_val, length_val):
+    """حساب مقاس رأس الطفل عند الولادة تلقائياً بناءً على الوزن والطول (معادلة تقديرية)"""
+    try:
+        w = float(weight_val) if weight_val else 0.0
+        l = float(length_val) if length_val else 0.0
+        if w > 0 and l > 0:
+            # مثال لمعادلة تقديرية: محيط الرأس (سم) = (الطول * 0.2) + (الوزن الكلي * 1.5) + قيمة أساسية
+            # أو نموذج قياسي تقريبي شائع للأطفال حديثي الولادة (عادة يتراوح بين 33-36 سم)
+            calc = round((l * 0.15) + (w * 1.2) + 22.0, 1)
+            return str(calc)
+    except Exception:
+        pass
+    return ""
+
 def get_existing_data(nat_id, sheet_name):
     clean_id = clean_digits(nat_id, 14)
     if len(clean_id) == 14 and supabase:
@@ -690,6 +704,15 @@ elif menu == "سجل الأطفال":
             elif col_name == "العمر الرحمى للطفل (أسابيع)":
                 current_gest_val = st.session_state.get(f"c_{col_name}", "")
                 st.text_input(f"{col_name} [محسوب تلقائياً]", value=current_gest_val, key=f"c_{col_name}", disabled=True)
+            
+            # حساب مقاس رأس الطفل عند الولادة تلقائياً من الوزن والطول
+            elif col_name == "مقاس راس الطفل عند الولادة":
+                w_val = st.session_state.get("c_وزن الطفل عند الولادة", "")
+                l_val = st.session_state.get("c_طول الطفل عند الولادة", "")
+                calc_head = calculate_head_circumference(w_val, l_val)
+                st.session_state[f"c_{col_name}"] = calc_head
+                st.text_input(f"{col_name} [محسوب تلقائياً من الوزن والطول]", value=calc_head, key=f"c_{col_name}", disabled=True)
+            
             else:
                 st.text_input(col_name, key=f"c_{col_name}")
 

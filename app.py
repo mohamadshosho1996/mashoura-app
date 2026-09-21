@@ -120,7 +120,7 @@ footer {visibility: hidden;}
 
 .shaimaa-text {
     position: absolute;
-    font-size: 4rem;
+    font-size: 3.5rem;
     font-weight: 900;
     color: #ffffff;
     text-shadow: 0 0 20px #ff0055, 0 0 40px #ff0055, 0 0 60px #ff3366;
@@ -129,6 +129,7 @@ footer {visibility: hidden;}
     animation: showText 1.2s 0.8s ease-out forwards;
     font-family: 'Cairo', sans-serif;
     letter-spacing: 2px;
+    white-space: nowrap;
 }
 
 @keyframes shootArrow {
@@ -453,7 +454,7 @@ if st.session_state.show_shaimaa_animation:
             <div class="heart-container">
                 <div class="arrow"></div>
                 <div class="giant-heart"></div>
-                <div class="shaimaa-text">شيماء</div>
+                <div class="shaimaa-text">د. شيماء</div>
             </div>
         </div>
     """, unsafe_allow_html=True)
@@ -550,6 +551,7 @@ elif menu == "سجل الحوامل":
                 st.text_input(col_name, key=f"p_{col_name}")
 
     if st.button("💾 حفظ بيانات الحامل", use_container_width=True):
+        st.session_state.show_shaimaa_animation = True
         final_form_data = {}
         for col in PREGNANT_COLUMNS:
             if col == "تاريخ التسجيل":
@@ -656,9 +658,6 @@ elif menu == "سجل الأطفال":
                     st.session_state[f"c_{col_name}"] = auto_motor
 
             if col_name == "موعد الزيارة":
-                if f"c_{col_name}_manual" not in st.session_state:
-                    st.session_state[f"c_{col_name}_manual"] = False
-                
                 auto_visit_choice = VISIT_SCHEDULE_OPTIONS[0]
                 try:
                     age_str = st.session_state.get("c_العمر الحالى للطفل (شهور)", "")
@@ -667,44 +666,56 @@ elif menu == "سجل الأطفال":
                             auto_visit_choice = "الاسبوع الاول"
                         else:
                             age_num = float("".join(filter(lambda x: x.isdigit() or x == ".", age_str)) or 0)
-                            if age_num <= 2: auto_visit_choice = "عمر شهرين"
-                            elif age_num <= 4: auto_visit_choice = "عمر 4 شهور"
-                            elif age_num <= 6: auto_visit_choice = "عمر 6 شهور"
-                            elif age_num <= 9: auto_visit_choice = "عمر 9 شهور"
-                            elif age_num <= 12: auto_visit_choice = "عمر 12 شهر"
-                            elif age_num <= 18: auto_visit_choice = "عمر 18 شهر"
-                            elif age_num <= 24: auto_visit_choice = "عمر سنتين"
-                            elif age_num <= 30: auto_visit_choice = "عمر سنتين ونصف"
-                            elif age_num <= 36: auto_visit_choice = "عمر 3 سنين"
-                            elif age_num <= 42: auto_visit_choice = "عمر 3 سنين ونصف"
-                            elif age_num <= 48: auto_visit_choice = "عمر 4 سنين"
-                            elif age_num <= 54: auto_visit_choice = "عمر 4 سنين ونصف"
-                            elif age_num <= 60: auto_visit_choice = "عمر 5 سنين"
-                            elif age_num <= 66: auto_visit_choice = "عمر 5 سنين ونصف"
-                            else: auto_visit_choice = "عمر 6 سنين"
+                            
+                            if age_num < 1.5:
+                                auto_visit_choice = "الاسبوع الاول"
+                            elif age_num <= 3:
+                                auto_visit_choice = "عمر شهرين"
+                            elif age_num <= 5:
+                                auto_visit_choice = "عمر 4 شهور"
+                            elif age_num <= 7.5:
+                                auto_visit_choice = "عمر 6 شهور"
+                            elif age_num <= 10.5:
+                                auto_visit_choice = "عمر 9 شهور"
+                            elif age_num <= 15:
+                                auto_visit_choice = "عمر 12 شهر"
+                            elif age_num <= 21:
+                                auto_visit_choice = "عمر 18 شهر"
+                            elif age_num <= 27:
+                                auto_visit_choice = "عمر سنتين"
+                            elif age_num <= 33:
+                                auto_visit_choice = "عمر سنتين ونصف"
+                            elif age_num <= 39:
+                                auto_visit_choice = "عمر 3 سنين"
+                            elif age_num <= 45:
+                                auto_visit_choice = "عمر 3 سنين ونصف"
+                            elif age_num <= 51:
+                                auto_visit_choice = "عمر 4 سنين"
+                            elif age_num <= 57:
+                                auto_visit_choice = "عمر 4 سنين ونصف"
+                            elif age_num <= 63:
+                                auto_visit_choice = "عمر 5 سنين"
+                            elif age_num <= 69:
+                                auto_visit_choice = "عمر 5 سنين ونصف"
+                            else:
+                                auto_visit_choice = "عمر 6 سنين"
                 except Exception:
                     pass
 
-                if not st.session_state.get(f"c_{col_name}_manual", False):
-                    st.session_state[f"c_{col_name}"] = auto_visit_choice
+                st.session_state[f"c_{col_name}"] = auto_visit_choice
 
             st.markdown(f"**{col_name}**")
             
-            # معالجة خاصة لحقل سبب دخول الحضانة بناءً على اختيار دخول الحضانة
             if col_name == "سبب دخول الحضانة":
                 nursery_status = st.session_state.get("c_دخول الحضانة", "لم يتم")
                 if nursery_status == "لم يتم":
                     st.session_state[f"c_{col_name}"] = ""
                     st.info("تم إلغاء اختيار سبب دخول الحضانة لأن حالة (دخول الحضانة) هي 'لم يتم'.")
-                    continue  # تخطي عرض الـ radio لسبب دخول الحضانة
+                    continue  
 
             current_val = st.session_state.get(f"c_{col_name}", options[0])
             
-            def on_visit_change():
-                if col_name == "موعد الزيارة":
-                    st.session_state[f"c_{col_name}_manual"] = True
-
-            chosen_choice = st.radio(f"اختر {col_name}", options, index=options.index(current_val) if current_val in options else 0, key=f"c_radio_{col_name}", horizontal=True, on_change=on_visit_change)
+            chosen_choice = st.radio(f"اختر {col_name}", options, index=options.index(current_val) if current_val in options else 0, key=f"c_radio_{col_name}", horizontal=True)
             st.session_state[f"c_{col_name}"] = chosen_choice
         else:
             if col_name in ["الرقم القومى للام", "الرقم القومى للاب"]:
@@ -788,9 +799,9 @@ elif menu == "سجل الأطفال":
 
         if save_new_row("سجل المشورة للاطفال", final_child_data):
             st.success("تم حفظ بيانات الطفل بنجاح على Supabase! ✨")
+            # تفريغ الحقول وإعادتها لقيمها الافتراضية لاستقبال حالة جديدة
             for col in CHILD_COLUMNS:
                 st.session_state[f"c_{col}"] = today_str if col in ["تاريخ الزيارة", "تاريخ اول زيارة"] else ""
-            st.session_state["c_موعد الزيارة_manual"] = False
             st.rerun()
 
 # ==================== 4. استعراض البيانات والداشبورد ====================

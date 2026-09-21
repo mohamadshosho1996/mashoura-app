@@ -398,13 +398,61 @@ def calculate_head_circumference(weight_val, length_val):
         w = float(weight_val) if weight_val else 0.0
         l = float(length_val) if length_val else 0.0
         if w > 0 and l > 0:
-            # مثال لمعادلة تقديرية: محيط الرأس (سم) = (الطول * 0.2) + (الوزن الكلي * 1.5) + قيمة أساسية
-            # أو نموذج قياسي تقريبي شائع للأطفال حديثي الولادة (عادة يتراوح بين 33-36 سم)
             calc = round((l * 0.15) + (w * 1.2) + 22.0, 1)
             return str(calc)
     except Exception:
         pass
     return ""
+
+def calculate_current_head_circumference(curr_w, curr_l, birth_w, birth_l, age_str):
+    """
+    حساب محيط الرأس الحالي للطفل بناءً على:
+    الطول الحالي، الوزن الحالي، الطول عند الولادة، الوزن عند الولادة، والعمر الحالي.
+    """
+    try:
+        cw = float(curr_w) if curr_w else 0.0
+        cl = float(curr_l) if curr_l else 0.0
+        bw = float(birth_w) if birth_w else 0.0
+        bl = float(birth_l) if birth_l else 0.0
+
+        # استخلاص عدد الشهور من حقل العمر
+        months = 0.0
+        if age_str:
+            if "يوم" in str(age_str):
+                months = 0.5
+            else:
+                digits = "".join(filter(str.isdigit, str(age_str)))
+                if digits:
+                    months = float(digits)
+
+        # 1. تحديد محيط الرأس عند الولادة (إما من مدخلات الولادة أو كمتوسط طبيعي)
+        if bw > 0 and bl > 0:
+            birth_hc = (bl * 0.15) + (bw * 1.2) + 22.0
+        else:
+            birth_hc = 35.0  # متوسط طبيعي لحديثي الولادة
+
+        # 2. حساب معدل النمو التقريبي بناءً على العمر
+        if months <= 3:
+            age_growth = months * 2.0
+        elif months <= 6:
+            age_growth = 6.0 + ((months - 3) * 1.0)
+        elif months <= 12:
+            age_growth = 9.0 + ((months - 6) * 0.5)
+        else:
+            age_growth = 12.0 + ((months - 12) * 0.2)
+
+        # 3. عامل تعديل إضافي يعتمد على الوزن والطول الحاليين للطفل 
+        current_adjustment = 0.0
+        if cw > 0 and cl > 0:
+            current_adjustment = (cw * 0.1) + (cl * 0.02) - 1.5
+
+        # جمع القيم للوصول لمحيط الرأس الحالي وتحديد نطاق منطقي بين 30 و 65 سم
+        final_hc = birth_hc + age_growth + current_adjustment
+        final_hc = max(30.0, min(65.0, final_hc))
+
+        return str(round(final_hc, 1))
+    except Exception:
+        return ""
 
 def get_existing_data(nat_id, sheet_name):
     clean_id = clean_digits(nat_id, 14)
@@ -701,17 +749,46 @@ elif menu == "سجل الأطفال":
             elif col_name == "العمر الحالى للطفل (شهور)":
                 current_age_val = st.session_state.get(f"c_{col_name}", "")
                 st.text_input(f"{col_name} [محسوب تلقائياً بالشهور أو الأيام]", value=current_age_val, key=f"c_{col_name}", disabled=True)
+            
             elif col_name == "العمر الرحمى للطفل (أسابيع)":
                 current_gest_val = st.session_state.get(f"c_{col_name}", "")
                 st.text_input(f"{col_name} [محسوب تلقائياً]", value=current_gest_val, key=f"c_{col_name}", disabled=True)
             
-            # حساب مقاس رأس الطفل عند الولادة تلقائياً من الوزن والطول
             elif col_name == "مقاس راس الطفل عند الولادة":
                 w_val = st.session_state.get("c_وزن الطفل عند الولادة", "")
                 l_val = st.session_state.get("c_طول الطفل عند الولادة", "")
                 calc_head = calculate_head_circumference(w_val, l_val)
                 st.session_state[f"c_{col_name}"] = calc_head
                 st.text_input(f"{col_name} [محسوب تلقائياً من الوزن والطول]", value=calc_head, key=f"c_{col_name}", disabled=True)
+            
+            # -------------- التعديل الجديد: حساب محيط الرأس الحالي --------------
+            elif col_name == "محيط الرأس (سم)":
+                # استدعاء القيم المطلوبة للحساب
+                c_curr_w = st.session_state.get("c_الوزن (كجم)", "")
+                c_curr_l = st.session_state.get("c_الطول (سم)", "")
+                c_birth_w = st.session_state.get("c_وزن الطفل عند الولادة", "")
+                c_birth_l = st.session_state.get("c_طول الطفل عند الولادة", "")
+                c_age = st.session_state.get("c_العمر الحالى للطفل (شهور)", "")
+                
+                # حساب القيمة التلقائية
+                auto_current_hc = calculate_current_head_circumference(
+                    curr_w=c_curr_w, 
+                    curr_l=c_curr_l, 
+                    birth_w=c_birth_w, 
+                    birth_l=c_birth_l, 
+                    age_str=c_age
+                )
+                
+                # إذا لم تكن القيمة مخزنة أو كانت فارغة، نستخدم القيمة المحسوبة
+                if f"c_{col_name}" not in st.session_state or not st.session_state[f"c_{col_name}"]:
+                    st.session_state[f"c_{col_name}"] = auto_current_hc
+                
+                # عرض الحقل قابلاً للتعديل في حالة أرادت الطبيبة تغييره يدوياً
+                hc_input = st.text_input(f"{col_name} [ممتلئ تلقائياً ويمكن التعديل]", 
+                                         value=st.session_state.get(f"c_{col_name}", auto_current_hc), 
+                                         key=f"c_{col_name}_input")
+                st.session_state[f"c_{col_name}"] = hc_input
+            # ----------------------------------------------------------------------
             
             else:
                 st.text_input(col_name, key=f"c_{col_name}")

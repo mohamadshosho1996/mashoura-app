@@ -934,9 +934,8 @@ elif menu == "استعراض البيانات والداشبورد":
 
     if not df_view.empty:
         st.markdown("---")
-        st.subheader("📅 فلترة الحالات حسب الفترة الزمنية (من - إلى)")
+        st.subheader("📅 فلترة الحالات حسب الفترة الزمنية")
         
-        # تحديد حقل التاريخ المتاح
         date_col_candidates = ["التاريخ الزيارة", "تاريخ التسجيل", "تاريخ اول زيارة"]
         selected_date_col = next((c for c in date_col_candidates if c in df_view.columns), None)
         
@@ -1019,12 +1018,10 @@ elif menu == "استعراض البيانات والداشبورد":
             df_summary = pd.DataFrame(summary_table_data)
             st.table(df_summary)
 
-        # عرض الجدول التفصيلي الكامل
         st.markdown("---")
         st.subheader("📋 الجدول التفصيلي للبيانات")
         st.dataframe(df_filtered, use_container_width=True)
 
-        # زر تصدير إلى Excel
         st.markdown("---")
         st.subheader("📥 تصدير البيانات")
         output = BytesIO()
@@ -1040,7 +1037,6 @@ elif menu == "استعراض البيانات والداشبورد":
             use_container_width=True
         )
 
-        # جدول إحصائي لعدد الحالات لكل مستخدم
         st.markdown("---")
         st.subheader("👥 إحصائيات عدد الحالات لكل مستخدم خلال الفترة")
         user_col_candidates = ["اسم المستخدم"]
@@ -1052,7 +1048,6 @@ elif menu == "استعراض البيانات والداشبورد":
         else:
             st.write("لا توجد بيانات كافية لعرض إحصائيات المستخدمين.")
 
-        # قسم حذف الحالات
         st.markdown("---")
         st.subheader("🗑️ حذف حالة من السجل")
         col_del1, col_del2 = st.columns(2)

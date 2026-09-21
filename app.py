@@ -639,23 +639,32 @@ elif menu == "سجل الحوامل":
             st.markdown(f"**{col_name}**")
             options = DROPDOWN_OPTIONS[col_name]
             current_val = st.session_state.get(f"p_{col_name}", options[0])
-            chosen_choice = st.radio(f"اختر {col_name}", options, index=options.index(current_val) if current_val in options else 0, key=f"p_radio_{col_name}", horizontal=True)
+            chosen_choice = st.radio(
+                f"اختر {col_name}", 
+                options, 
+                index=options.index(current_val) if current_val in options else 0, 
+                key=f"p_radio_{col_name}", 
+                horizontal=True
+            )
             st.session_state[f"p_{col_name}"] = chosen_choice
         else:
             if col_name == "الرقم القومى":
-                raw_val = st.text_input(col_name, key=f"p_{col_name}")
-                cleaned_val = clean_digits(raw_val, 14)
+                val = st.text_input(col_name, value=st.session_state.get(f"p_{col_name}", ""), key=f"p_input_{col_name}")
+                cleaned_val = clean_digits(val, 14)
                 st.session_state[f"p_{col_name}"] = cleaned_val
                 if len(cleaned_val) == 14:
                     _, calc_age = parse_national_id(cleaned_val)
-                    if calc_age: st.session_state["p_العمر الحالى"] = calc_age
+                    if calc_age: 
+                        st.session_state["p_العمر الحالى"] = calc_age
             elif col_name == "رقم الموبايل":
-                raw_val = st.text_input(col_name, key=f"p_{col_name}")
-                st.session_state[f"p_{col_name}"] = clean_digits(raw_val, 11)
+                val = st.text_input(col_name, value=st.session_state.get(f"p_{col_name}", ""), key=f"p_input_{col_name}")
+                st.session_state[f"p_{col_name}"] = clean_digits(val, 11)
             elif col_name == "العمر الحالى":
-                st.text_input(f"{col_name} [محسوب تلقائياً]", key=f"p_{col_name}")
+                age_val = st.session_state.get(f"p_{col_name}", "")
+                st.text_input(f"{col_name} [محسوب تلقائياً]", value=age_val, key=f"p_input_{col_name}", disabled=True)
             else:
-                st.text_input(col_name, key=f"p_{col_name}")
+                val = st.text_input(col_name, value=st.session_state.get(f"p_{col_name}", ""), key=f"p_input_{col_name}")
+                st.session_state[f"p_{col_name}"] = val
 
     if st.button("💾 حفظ بيانات الحامل", use_container_width=True):
         final_form_data = {}
@@ -808,7 +817,13 @@ elif menu == "سجل الأطفال":
             options = DROPDOWN_OPTIONS[col_name]
             st.markdown(f"**{col_name}**")
             current_val = st.session_state.get(f"c_{col_name}", options[0])
-            chosen_choice = st.radio(f"اختر {col_name}", options, index=options.index(current_val) if current_val in options else 0, key=f"c_radio_{col_name}", horizontal=True)
+            chosen_choice = st.radio(
+                f"اختر {col_name}", 
+                options, 
+                index=options.index(current_val) if current_val in options else 0, 
+                key=f"c_radio_{col_name}", 
+                horizontal=True
+            )
             st.session_state[f"c_{col_name}"] = chosen_choice
         else:
             if col_name in ["الرقم القومى للام", "الرقم القومى للاب"]:

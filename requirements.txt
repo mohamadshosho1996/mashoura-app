@@ -4,3 +4,6 @@ openpyxl
 matplotlib
 streamlit-mic-recorder
 supabase
+gspread
+google-auth
+oauth2client

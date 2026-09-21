@@ -103,7 +103,7 @@ footer {visibility: hidden;}
     right: -200px;
     transform: translateY(-50%) rotate(-45deg);
     animation: shootArrow 0.8s ease-in-out forwards;
-    z-index: 1000000;
+    z-index: 100000;
 }
 
 .arrow::before {
@@ -279,6 +279,18 @@ DROPDOWN_OPTIONS = {
     "إعطاء الجرعة اليومية من الحديد": ["يوجد", "لا يوجد"],
 }
 
+# الحقول في سجل الأطفال التي ستتحول إلى خيارات "تم" و "لم يتم" في صورة Checkbox
+CHILD_TAM_LTM_FIELDS = [
+    "فوائد الرضاعة الطبيعية والأوضاع و",
+    "كفاية اللبن وكمية البراز",
+    "إعطاء الجرعة اليومية من فيتامين د",
+    "كيفية رعاية السرة والإهتمام بنظاف",
+    "البطاقة الصحية وأهمية المتابعة ال",
+    "أهمية الإلتزام بتطعيمات الطفل",
+    "التغذية الصحية للأم المرضعة",
+    "كيفية التعرف على علامات الخطورة"
+]
+
 # قائمة أسباب دخول الحضانة مع إضافة خيار فارغ في المقدمة لضمان عدم الاختيار التلقائي
 NURSERY_REASONS = [
     "",
@@ -393,7 +405,6 @@ def calculate_gestational_age(birth_date):
         return ""
 
 def calculate_head_circumference(weight_val, length_val):
-    """حساب مقاس رأس الطفل عند الولادة تلقائياً بناءً على الوزن والطول (معادلة تقديرية)"""
     try:
         w = float(weight_val) if weight_val else 0.0
         l = float(length_val) if length_val else 0.0
@@ -405,17 +416,12 @@ def calculate_head_circumference(weight_val, length_val):
     return ""
 
 def calculate_current_head_circumference(curr_w, curr_l, birth_w, birth_l, age_str):
-    """
-    حساب محيط الرأس الحالي للطفل بناءً على:
-    الطول الحالي، الوزن الحالي، الطول عند الولادة، الوزن عند الولادة، والعمر الحالي.
-    """
     try:
         cw = float(curr_w) if curr_w else 0.0
         cl = float(curr_l) if curr_l else 0.0
         bw = float(birth_w) if birth_w else 0.0
         bl = float(birth_l) if birth_l else 0.0
 
-        # استخلاص عدد الشهور من حقل العمر
         months = 0.0
         if age_str:
             if "يوم" in str(age_str):
@@ -425,13 +431,11 @@ def calculate_current_head_circumference(curr_w, curr_l, birth_w, birth_l, age_s
                 if digits:
                     months = float(digits)
 
-        # 1. تحديد محيط الرأس عند الولادة (إما من مدخلات الولادة أو كمتوسط طبيعي)
         if bw > 0 and bl > 0:
             birth_hc = (bl * 0.15) + (bw * 1.2) + 22.0
         else:
-            birth_hc = 35.0  # متوسط طبيعي لحديثي الولادة
+            birth_hc = 35.0
 
-        # 2. حساب معدل النمو التقريبي بناءً على العمر
         if months <= 3:
             age_growth = months * 2.0
         elif months <= 6:
@@ -441,12 +445,10 @@ def calculate_current_head_circumference(curr_w, curr_l, birth_w, birth_l, age_s
         else:
             age_growth = 12.0 + ((months - 12) * 0.2)
 
-        # 3. عامل تعديل إضافي يعتمد على الوزن والطول الحاليين للطفل 
         current_adjustment = 0.0
         if cw > 0 and cl > 0:
             current_adjustment = (cw * 0.1) + (cl * 0.02) - 1.5
 
-        # جمع القيم للوصول لمحيط الرأس الحالي وتحديد نطاق منطقي بين 30 و 65 سم
         final_hc = birth_hc + age_growth + current_adjustment
         final_hc = max(30.0, min(65.0, final_hc))
 
@@ -628,7 +630,11 @@ elif menu == "سجل الأطفال":
 
     for col in CHILD_COLUMNS:
         if f"c_{col}" not in st.session_state:
-            st.session_state[f"c_{col}"] = today_str if col in ["تاريخ الزيارة", "تاريخ اول زيارة"] else ""
+            # إذا كان الحقل من حقول تم/لم يتم، نجعله افتراضياً "لم يتم" أو فارغاً
+            if col in CHILD_TAM_LTM_FIELDS:
+                st.session_state[f"c_{col}"] = "لم يتم"
+            else:
+                st.session_state[f"c_{col}"] = today_str if col in ["تاريخ الزيارة", "تاريخ اول زيارة"] else ""
 
     raw_nat_id_mom = st.text_input("الرقم القومى للام (اختياري)", key="c_الرقم القومى للام_input")
     nat_id_mom_input = clean_digits(raw_nat_id_mom, 14)
@@ -668,7 +674,14 @@ elif menu == "سجل الأطفال":
                 st.markdown("### **مصدر الاحالة**")
                 rendered_referral_header = True
 
-        if col_name == "نوع الولادة":
+        # ==================== التعامل مع حقول (تم / لم يتم) بـ Checkbox ====================
+        if col_name in CHILD_TAM_LTM_FIELDS:
+            st.markdown(f"**{col_name}**")
+            current_val = st.session_state.get(f"c_{col_name}", "لم يتم")
+            is_checked = st.checkbox("تم", value=(current_val == "تم"), key=f"c_chk_tam_{col_name}")
+            st.session_state[f"c_{col_name}"] = "تم" if is_checked else "لم يتم"
+
+        elif col_name == "نوع الولادة":
             st.markdown(f"**{col_name}**")
             if "c_birth_nat" not in st.session_state: st.session_state.c_birth_nat = False
             if "c_birth_ces" not in st.session_state: st.session_state.c_birth_ces = False
@@ -761,16 +774,13 @@ elif menu == "سجل الأطفال":
                 st.session_state[f"c_{col_name}"] = calc_head
                 st.text_input(f"{col_name} [محسوب تلقائياً من الوزن والطول]", value=calc_head, key=f"c_{col_name}", disabled=True)
             
-            # -------------- التعديل الجديد: حساب محيط الرأس الحالي --------------
             elif col_name == "محيط الرأس (سم)":
-                # استدعاء القيم المطلوبة للحساب
                 c_curr_w = st.session_state.get("c_الوزن (كجم)", "")
                 c_curr_l = st.session_state.get("c_الطول (سم)", "")
                 c_birth_w = st.session_state.get("c_وزن الطفل عند الولادة", "")
                 c_birth_l = st.session_state.get("c_طول الطفل عند الولادة", "")
                 c_age = st.session_state.get("c_العمر الحالى للطفل (شهور)", "")
                 
-                # حساب القيمة التلقائية
                 auto_current_hc = calculate_current_head_circumference(
                     curr_w=c_curr_w, 
                     curr_l=c_curr_l, 
@@ -779,17 +789,13 @@ elif menu == "سجل الأطفال":
                     age_str=c_age
                 )
                 
-                # إذا لم تكن القيمة مخزنة أو كانت فارغة، نستخدم القيمة المحسوبة
                 if f"c_{col_name}" not in st.session_state or not st.session_state[f"c_{col_name}"]:
                     st.session_state[f"c_{col_name}"] = auto_current_hc
                 
-                # عرض الحقل قابلاً للتعديل في حالة أرادت الطبيبة تغييره يدوياً
                 hc_input = st.text_input(f"{col_name} [ممتلئ تلقائياً ويمكن التعديل]", 
                                          value=st.session_state.get(f"c_{col_name}", auto_current_hc), 
                                          key=f"c_{col_name}_input")
                 st.session_state[f"c_{col_name}"] = hc_input
-            # ----------------------------------------------------------------------
-            
             else:
                 st.text_input(col_name, key=f"c_{col_name}")
 
@@ -807,7 +813,10 @@ elif menu == "سجل الأطفال":
         if save_new_row("سجل المشورة للاطفال", final_child_data):
             st.success("تم حفظ بيانات الطفل بنجاح على Supabase! ✨")
             for col in CHILD_COLUMNS:
-                st.session_state[f"c_{col}"] = today_str if col in ["تاريخ الزيارة", "تاريخ اول زيارة"] else ""
+                if col in CHILD_TAM_LTM_FIELDS:
+                    st.session_state[f"c_{col}"] = "لم يتم"
+                else:
+                    st.session_state[f"c_{col}"] = today_str if col in ["تاريخ الزيارة", "تاريخ اول زيارة"] else ""
             st.rerun()
 
 # ==================== 4. استعراض البيانات والداشبورد ====================

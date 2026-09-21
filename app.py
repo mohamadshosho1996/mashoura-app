@@ -279,7 +279,7 @@ DROPDOWN_OPTIONS = {
     "إعطاء الجرعة اليومية من الحديد": ["يوجد", "لا يوجد"],
 }
 
-# الحقول في سجل الأطفال التي تحولت إلى خيارات "تم" و "لم يتم" في صورة اختيار راديوي ثنائي
+# الحقول في سجل الأطفال التي تبدأ افتراضياً بـ "تم" ويمكن للمستخدم تعديلها
 CHILD_TAM_LTM_FIELDS = [
     "فوائد الرضاعة الطبيعية والأوضاع و",
     "كفاية اللبن وكمية البراز",
@@ -630,7 +630,7 @@ elif menu == "سجل الأطفال":
     for col in CHILD_COLUMNS:
         if f"c_{col}" not in st.session_state:
             if col in CHILD_TAM_LTM_FIELDS:
-                st.session_state[f"c_{col}"] = "لم يتم"
+                st.session_state[f"c_{col}"] = "تم"  # ضبط القيمة الافتراضية التلقائية لتكون "تم"
             else:
                 st.session_state[f"c_{col}"] = today_str if col in ["تاريخ الزيارة", "تاريخ اول زيارة"] else ""
 
@@ -672,12 +672,12 @@ elif menu == "سجل الأطفال":
                 st.markdown("### **مصدر الاحالة**")
                 rendered_referral_header = True
 
-        # ==================== الحقول المخصصة لخيارات (تم / لم يتم) ====================
+        # ==================== الحقول المخصصة لخيارات (تم / لم يتم) بمبدأ الامتلاء التلقائي والتعديل ====================
         if col_name in CHILD_TAM_LTM_FIELDS:
             st.markdown(f"**{col_name}**")
-            current_val = st.session_state.get(f"c_{col_name}", "لم يتم")
+            current_val = st.session_state.get(f"c_{col_name}", "تم")
             options_list = ["تم", "لم يتم"]
-            default_index = options_list.index(current_val) if current_val in options_list else 1
+            default_index = options_list.index(current_val) if current_val in options_list else 0
             
             chosen_tam_ltm = st.radio(
                 f"اختر حالة {col_name}", 
@@ -821,7 +821,7 @@ elif menu == "سجل الأطفال":
             st.success("تم حفظ بيانات الطفل بنجاح على Supabase! ✨")
             for col in CHILD_COLUMNS:
                 if col in CHILD_TAM_LTM_FIELDS:
-                    st.session_state[f"c_{col}"] = "لم يتم"
+                    st.session_state[f"c_{col}"] = "تم"
                 else:
                     st.session_state[f"c_{col}"] = today_str if col in ["تاريخ الزيارة", "تاريخ اول زيارة"] else ""
             st.rerun()

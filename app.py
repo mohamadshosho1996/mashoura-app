@@ -455,11 +455,7 @@ def calculate_current_head_circumference(curr_w, curr_l, birth_w, birth_l, age_s
     except Exception:
         return ""
 
-# ==================== دالة حساب معدل نمو الطفل بناءً على المعايير العالمية ====================
 def evaluate_child_growth(birth_w, birth_l, curr_w, curr_l, age_str):
-    """
-    تحسب معدل نمو الطفل (طبيعي، متقدم، أو متأخر) مقارنة بمعدلات النمو العالمية التقديرية بناءً على العمر والوزن والطول.
-    """
     try:
         bw = float(birth_w) if birth_w else 0.0
         bl = float(birth_l) if birth_l else 0.0
@@ -478,13 +474,9 @@ def evaluate_child_growth(birth_w, birth_l, curr_w, curr_l, age_str):
                 if digits:
                     months = float(digits)
 
-        # المعدلات العالمية التقديرية التقريبية لوزن وطول الطفل حسب الشهور
-        # الوزن الطبيعي عند الولادة حوالي 3.2 كجم، ويزيد بمعدل ~ 750 جرام في أول 4 شهور ثم ~ 500 جرام ثم ~ 250 جرام.
-        # الطول عند الولادة حوالي 50 سم، ويزيد بمعدل ~ 3 سم شهرياً في أول 3 أشهر ثم يقل تدريجياً.
         expected_w = 3.2 + (months * 0.6) if months <= 12 else 10.0 + ((months - 12) * 0.2)
         expected_l = 50.0 + (months * 2.5) if months <= 12 else 75.0 + ((months - 12) * 0.5)
 
-        # حساب النسبة المئوية للانحراف عن المعدل المتوقع
         w_ratio = cw / expected_w if expected_w > 0 else 1.0
         l_ratio = cl / expected_l if expected_l > 0 else 1.0
 
@@ -602,6 +594,16 @@ elif menu == "سجل الحوامل":
         if f"p_{col}" not in st.session_state:
             st.session_state[f"p_{col}"] = today_str if col == "التاريخ الزيارة" else ""
 
+    # زر تفريغ بيانات الحقول في أول الواجهة
+    if st.button("🧹 تفريغ جميع الحقول (حوامل)", key="clear_pregnant_fields"):
+        for col in PREGNANT_COLUMNS:
+            st.session_state[f"p_{col}"] = today_str if col == "التاريخ الزيارة" else ""
+        st.session_state.p_birth_nat = False
+        st.session_state.p_birth_ces = False
+        st.session_state.p_birth_none = True
+        st.success("تم تفريغ جميع الحقول بنجاح!")
+        st.rerun()
+
     for col_name in PREGNANT_COLUMNS:
         if col_name in ["تاريخ التسجيل", "اسم المستخدم"]:
             continue
@@ -682,6 +684,19 @@ elif menu == "سجل الأطفال":
                 st.session_state[f"c_{col}"] = "تم"
             else:
                 st.session_state[f"c_{col}"] = today_str if col in ["تاريخ الزيارة", "تاريخ اول زيارة"] else ""
+
+    # زر تفريغ بيانات الحقول في أول واجهة الأطفال
+    if st.button("🧹 تفريغ جميع الحقول (أطفال)", key="clear_child_fields"):
+        for col in CHILD_COLUMNS:
+            if col in CHILD_TAM_LTM_FIELDS:
+                st.session_state[f"c_{col}"] = "تم"
+            else:
+                st.session_state[f"c_{col}"] = today_str if col in ["تاريخ الزيارة", "تاريخ اول زيارة"] else ""
+        st.session_state.c_birth_nat = False
+        st.session_state.c_birth_ces = False
+        st.session_state.c_birth_none = True
+        st.success("تم تفريغ جميع الحقول بنجاح!")
+        st.rerun()
 
     raw_nat_id_mom = st.text_input("الرقم القومى للام (اختياري)", key="c_الرقم القومى للام_input")
     nat_id_mom_input = clean_digits(raw_nat_id_mom, 14)
@@ -854,7 +869,6 @@ elif menu == "سجل الأطفال":
             else:
                 st.text_input(col_name, key=f"c_{col_name}")
 
-    # ==================== قسم تقييم معدل النمو العالمي وإظهار الرسالة التحذيرية ====================
     st.markdown("---")
     st.markdown("### 📊 تقييم معدل نمو الطفل (حسب معدلات النمو العالمية)")
     

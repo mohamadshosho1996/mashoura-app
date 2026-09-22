@@ -567,7 +567,7 @@ if st.session_state.show_shaimaa_animation:
     """, unsafe_allow_html=True)
     st.session_state.show_shaimaa_animation = False
 
-menu_options = ["الصفحة الرئيسية", "سجل الحوامل", "سجل الأطفال", "استعراض البيانات والداشبورد"]
+menu_options = ["الصفحة الرئيسية", "سجل الحوامل", "سجل الأطفال", "استعراض البيانات والداشبورد", "سجل متابعة طفل (بحث متقدم)"]
 if st.session_state.role == "admin":
     menu_options.append("إدارة المستخدمين")
 
@@ -593,7 +593,7 @@ st.markdown("---")
 # ==================== 1. الصفحة الرئيسية ====================
 if menu == "الصفحة الرئيسية":
     st.markdown("<h1>✨ مرحباً بكِ في نظام المشورة الأسرية الشامل (Supabase) ✨</h1>", unsafe_allow_html=True)
-    st.write("تم ربط البرنامج بنجاح مع قاعدة بيانات Supabase السحابية وتطابق كافة الحقول التفصيلية.")
+    st.write("تم ربط البرنامج بنجاح مع قاعدة بيانات Supabase السحابية وتطابق كافة الحقول التفصيلية مع إمكانية عمل سجل متابعة تفاعلي ومخصص لكل طفل.")
 
 # ==================== 2. سجل الحوامل ====================
 elif menu == "سجل الحوامل":
@@ -926,15 +926,109 @@ elif menu == "سجل الأطفال":
                     st.session_state[f"c_{col}"] = today_str if col in ["تاريخ الزيارة", "تاريخ اول زيارة"] else ""
             st.rerun()
 
-# ==================== 4. استعراض البيانات والداشبورد ====================
+# ==================== 4. سجل متابعة طفل (بحث متقدم جديد) ====================
+elif menu == "سجل متابعة طفل (بحث متقدم)":
+    st.markdown("<h2>🔍 سجل ومتابعة نمو طفل (بحث متقدم)</h2>", unsafe_allow_html=True)
+    st.write("ابحث بالرقم القومي للأم واسم الطفل لاستخراج نموذج متابعة تفاعلي يوضح كافة الزيارات، الأوزان، الأطوال، ومعدلات النمو لكل زيارة على حدة.")
+
+    df_children_all = load_sheet_df("سجل المشورة للاطفال")
+    
+    if not df_children_all.empty:
+        col_s1, col_s2 = st.columns(2)
+        with col_s1:
+            search_nat_id = st.text_input("الرقم القومى للام 🆔", placeholder="أدخل 14 رقم")
+        with col_s2:
+            search_child_name = st.text_input("اسم الطفل 👶", placeholder="أدخل اسم الطفل كاملاً أو جزءاً منه")
+
+        if st.button("🔎 بحث عن سجل المتابعة", use_container_width=True):
+            cleaned_search_id = clean_digits(search_nat_id, 14)
+            
+            # تصفية البيانات
+            filtered_df = df_children_all.copy()
+            if cleaned_search_id:
+                if "الرقم القومى للام" in filtered_df.columns:
+                    filtered_df = filtered_df[filtered_df["الرقم القومى للام"].astype(str).str.strip() == cleaned_search_id]
+            
+            if search_child_name:
+                if "اسم الطفل" in filtered_df.columns:
+                    filtered_df = filtered_df[filtered_df["اسم الطفل"].astype(str).str.contains(search_child_name.strip(), na=False, case=False)]
+
+            if not filtered_df.empty:
+                st.success(, icon="🎉")
+                
+                # بيانات الطفل العامة من أول سجل
+                first_row = filtered_df.iloc[0]
+                st.markdown("---")
+                st.markdown("### 📋 بيانات الأسرة والطفل الأساسية")
+                info_c1, info_c2, info_c3 = st.columns(3)
+                with info_c1:
+                    st.markdown(f"**اسم الأم:** {first_row.get('اسم الام', 'غير متوفر')}")
+                    st.markdown(f"**الرقم القومي للأم:** {first_row.get('الرقم القومى للام', 'غير متوفر')}")
+                with info_c2:
+                    st.markdown(f"**اسم الطفل:** {first_row.get('اسم الطفل', 'غير متوفر')}")
+                    st.markdown(f"**تاريخ الميلاد:** {first_row.get('تاريخ الميلاد للطفل', 'غير متوفر')}")
+                with info_c3:
+                    st.markdown(f"**رقم الموبايل:** {first_row.get('رقم الموبايل للام', 'غير متوفر')}")
+                    st.markdown(f"**إجمالي عدد الزيارات المسجلة:** `{len(filtered_df)}` زيارة")
+
+                st.markdown("---")
+                st.markdown("### 📈 سجل الزيارات ومعدل النمو التفصيلي لكل زيارة")
+
+                # ترتيب الزيارات حسب التاريخ إذا وجد
+                date_col_visit = "تاريخ الزيارة" if "تاريخ الزيارة" in filtered_df.columns else "تاريخ اول زيارة"
+                if date_col_visit in filtered_df.columns:
+                    filtered_df['sort_date'] = pd.to_datetime(filtered_df[date_col_visit], errors='coerce')
+                    filtered_df = filtered_df.sort_values(by='sort_date', ascending=True).reset_index(drop=True)
+
+                for idx, row in filtered_df.iterrows():
+                    v_date = row.get(date_col_visit, 'غير محدد')
+                    v_type = row.get('موعد الزيارة', 'زيارة متابعة عامة')
+                    v_weight = row.get('الوزن (كجم)', 'غير محدد')
+                    v_length = row.get('الطول (سم)', 'غير محدد')
+                    v_hc = row.get('محيط الرأس (سم)', 'غير محدد')
+                    v_age = row.get('العمر الحالى للطفل (شهور)', 'غير محدد')
+                    v_birth_w = row.get('وزن الطفل عند الولادة', '3.2')
+                    v_birth_l = row.get('طول الطفل عند الولادة', '50')
+
+                    # تقييم النمو في هذه الزيارة
+                    status, msg = evaluate_child_growth(v_birth_w, v_birth_l, v_weight, v_length, v_age)
+
+                    with st.expander(f"📌 الزيارة رقم ({idx + 1}) - بتاريخ: {v_date} ({v_type})"):
+                        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+                        with col_m1:
+                            st.metric(label="⚖️ الوزن الحالي", value=f"{v_weight} كجم")
+                        with col_m2:
+                            st.metric(label="📏 الطول الحالي", value=f"{v_length} سم")
+                        with col_m3:
+                            st.metric(label="🧠 محيط الرأس", value=f"{v_hc} سم")
+                        with col_m4:
+                            st.metric(label="👶 العمر بالزيارة", value=f"{v_age}")
+
+                        st.info(f"**تقييم النمو في هذه الزيارة:** {msg}")
+                        
+                        # إظهار بعض الملاحظات والتوصيات إن وجدت
+                        notes = row.get('ملاحظات/ توصيات', '')
+                        if notes:
+                            st.markdown(f"**ملاحظات الطبيبة:** {notes}")
+                
+                # جدول ملخص لكل الزيارات
+                st.markdown("---")
+                st.subheader("📊 جدول مقارنة الزيارات وتطور القياسات")
+                cols_to_show = [col for col in [date_col_visit, 'موعد الزيارة', 'العمر الحالى للطفل (شهور)', 'الوزن (كجم)', 'الطول (سم)', 'محيط الرأس (سم)', 'اسم المستخدم'] if col in filtered_df.columns]
+                st.dataframe(filtered_df[cols_to_show], use_container_width=True)
+
+            else:
+                st.warning("⚠️ لم يتم العثور على أي حالات مطابقة لبيانات البحث المدخلة (تأكد من الرقم القومي واسم الطفل).")
+    else:
+        st.warning("لا توجد بيانات مسجلة في سجل الأطفال حتى الآن.")
+
+# ==================== 5. استعراض البيانات والداشبورد ====================
 elif menu == "استعراض البيانات والداشبورد":
     st.markdown("<h2>📊 لوحة المؤشرات واستعراض البيانات</h2>", unsafe_allow_html=True)
     
-    # اختيار السجل أولاً لتعرفي البيانات المعروضة
     sheet_to_show = st.selectbox("اختر السجل للاستعراض:", ["المشورة الاسرية للحامل", "سجل المشورة للاطفال"])
     df_view = load_sheet_df(sheet_to_show)
 
-    # حقول إدخال التواريخ اليدوية التي تتحكمين بها تماماً
     st.markdown("---")
     st.markdown("### 📅 أدخل التواريخ بنفسك للفلترة وحساب المؤشرات المطلوبة")
     
@@ -960,7 +1054,6 @@ elif menu == "استعراض البيانات والداشبورد":
 
         st.info(f"عدد الحالات المطابقة للفترة الزمنية التي أدخلتها (من {start_date} إلى {end_date}): **{len(df_filtered)}** حالة")
         
-        # عرض الجدول الإحصائي المخصص لسجل الحوامل بناء على تواريخك المختارة
         if sheet_to_show == "المشورة الاسرية للحامل":
             st.markdown("---")
             st.subheader("📈 مؤشرات المشورة الأسرية للحامل (حسب تواريخك المحددة)")
@@ -1005,7 +1098,6 @@ elif menu == "استعراض البيانات والداشبورد":
             df_summary_pregnant = pd.DataFrame(summary_pregnant_data)
             st.table(df_summary_pregnant)
 
-        # عرض الجدول الإحصائي المخصص لسجل الأطفال بناء على تواريخك المختارة
         elif sheet_to_show == "سجل المشورة للاطفال":
             st.markdown("---")
             st.subheader("📈 مؤشرات سجل الأطفال (حسب تواريخك المحددة)")
@@ -1129,7 +1221,7 @@ elif menu == "استعراض البيانات والداشبورد":
     else:
         st.warning("لا توجد بيانات متاحة في هذا السجل حالياً.")
 
-# ==================== 5. إدارة المستخدمين ====================
+# ==================== 6. إدارة المستخدمين ====================
 elif menu == "إدارة المستخدمين" and st.session_state.role == "admin":
     st.markdown("<h2>⚙️ إدارة المستخدمين والصلاحيات</h2>", unsafe_allow_html=True)
     for k, v in DEFAULT_USERS.items():

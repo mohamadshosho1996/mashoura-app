@@ -1001,7 +1001,7 @@ elif menu == "سجل متابعة طفل (بحث متقدم)":
 
                 date_col_visit = "تاريخ الزيارة" if "تاريخ الزيارة" in filtered_df.columns else "تاريخ اول زيارة"
                 if date_col_visit in filtered_df.columns:
-                    filtered_df['sort_date'] = pd.to_datetime(filtered_df[date_col_visit], errors='coerce')
+                    filtered_df['sort_date'] = pd.to_datetime(filtered_df[date_col_visit], format='mixed', errors='coerce')
                     filtered_df = filtered_df.sort_values(by='sort_date', ascending=True).reset_index(drop=True)
 
                 for idx, row in filtered_df.iterrows():
@@ -1060,12 +1060,12 @@ elif menu == "استعراض البيانات والداشبورد":
         end_date = st.date_input("إلى تاريخ التسجيل (النهاية):", value=datetime.date.today(), key="manual_end_date")
 
     if not df_view.empty:
-        # ربط الفلترة بـ "تاريخ التسجيل" حصرياً كما طلبت
+        # ربط الفلترة بـ "تاريخ التسجيل" حصرياً ومعالجة التنسيقات المختلطة بأمان
         selected_date_col = "تاريخ التسجيل"
         
         if selected_date_col in df_view.columns:
             try:
-                df_view['parsed_date'] = pd.to_datetime(df_view[selected_date_col], errors='coerce').dt.date
+                df_view['parsed_date'] = pd.to_datetime(df_view[selected_date_col], format='mixed', errors='coerce').dt.date
                 mask = (df_view['parsed_date'] >= start_date) & (df_view['parsed_date'] <= end_date)
                 df_filtered = df_view.loc[mask].drop(columns=['parsed_date'])
             except Exception:

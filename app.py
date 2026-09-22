@@ -929,30 +929,28 @@ elif menu == "سجل الأطفال":
 # ==================== 4. استعراض البيانات والداشبورد ====================
 elif menu == "استعراض البيانات والداشبورد":
     st.markdown("<h2>📊 لوحة المؤشرات واستعراض البيانات</h2>", unsafe_allow_html=True)
+    
+    # اختيار السجل أولاً لتعرفي البيانات المعروضة
     sheet_to_show = st.selectbox("اختر السجل للاستعراض:", ["المشورة الاسرية للحامل", "سجل المشورة للاطفال"])
     df_view = load_sheet_df(sheet_to_show)
 
+    # حقول إدخال التواريخ اليدوية التي تتحكمين بها تماماً
+    st.markdown("---")
+    st.markdown("### 📅 أدخل التواريخ بنفسك للفلترة وحساب المؤشرات المطلوبة")
+    
+    col_f1, col_f2 = st.columns(2)
+    with col_f1:
+        start_date = st.date_input("من تاريخ بداية البحث:", value=datetime.date(2025, 1, 1), key="manual_start_date")
+    with col_f2:
+        end_date = st.date_input("إلى تاريخ نهاية البحث:", value=datetime.date.today(), key="manual_end_date")
+
     if not df_view.empty:
-        st.markdown("---")
-        st.subheader("📅 فلترة الحالات حسب الفترة الزمنية (تحديد تاريخ بداية وتاريخ نهاية البحث)")
-        
         date_col_candidates = ["التاريخ الزيارة", "تاريخ التسجيل", "تاريخ اول زيارة"]
         selected_date_col = next((c for c in date_col_candidates if c in df_view.columns), None)
         
         if selected_date_col:
             try:
                 df_view['parsed_date'] = pd.to_datetime(df_view[selected_date_col], errors='coerce').dt.date
-                min_d = df_view['parsed_date'].min()
-                max_d = df_view['parsed_date'].max()
-                if pd.isna(min_d): min_d = datetime.date.today()
-                if pd.isna(max_d): max_d = datetime.date.today()
-
-                col_f1, col_f2 = st.columns(2)
-                with col_f1:
-                    start_date = st.date_input("زر تحديد تاريخ بداية البحث (من تاريخ):", value=min_d, key="search_start_date")
-                with col_f2:
-                    end_date = st.date_input("زر تحديد تاريخ نهاية البحث (إلى تاريخ):", value=max_d, key="search_end_date")
-
                 mask = (df_view['parsed_date'] >= start_date) & (df_view['parsed_date'] <= end_date)
                 df_filtered = df_view.loc[mask].drop(columns=['parsed_date'])
             except Exception:
@@ -960,12 +958,12 @@ elif menu == "استعراض البيانات والداشبورد":
         else:
             df_filtered = df_view.copy()
 
-        st.info(f"عدد الحالات المطابقة للفترة المحددة: **{len(df_filtered)}** حالة")
+        st.info(f"عدد الحالات المطابقة للفترة الزمنية التي أدخلتها (من {start_date} إلى {end_date}): **{len(df_filtered)}** حالة")
         
-        # عرض الجدول الإحصائي المخصص لسجل الحوامل (المكون من عمودين وخمس صفوف حسب الطلب)
+        # عرض الجدول الإحصائي المخصص لسجل الحوامل بناء على تواريخك المختارة
         if sheet_to_show == "المشورة الاسرية للحامل":
             st.markdown("---")
-            st.subheader("📈 مؤشرات المشورة الأسرية للحامل (حسب الفترة المفلترة)")
+            st.subheader("📈 مؤشرات المشورة الأسرية للحامل (حسب تواريخك المحددة)")
             
             total_pregnant = len(df_filtered)
             
@@ -996,7 +994,7 @@ elif menu == "استعراض البيانات والداشبورد":
                     "عدد الولادة القيصرية",
                     "اجمالى عدد حالات وسيلة تنظيم الاسرة المستخدمة سابقا"
                 ],
-                "عدد الحالات (حسب التاريخ المفلتر)": [
+                "عدد الحالات (خلال الفترة المحددة)": [
                     total_pregnant,
                     followup_count,
                     nat_birth_count,
@@ -1007,10 +1005,10 @@ elif menu == "استعراض البيانات والداشبورد":
             df_summary_pregnant = pd.DataFrame(summary_pregnant_data)
             st.table(df_summary_pregnant)
 
-        # عرض الجدول الإحصائي المخصص لسجل الأطفال (المكون من عمودين و 6 صفوف)
+        # عرض الجدول الإحصائي المخصص لسجل الأطفال بناء على تواريخك المختارة
         elif sheet_to_show == "سجل المشورة للاطفال":
             st.markdown("---")
-            st.subheader("📈 مؤشرات سجل الأطفال (حسب الفترة المفلترة)")
+            st.subheader("📈 مؤشرات سجل الأطفال (حسب تواريخك المحددة)")
             
             total_children = len(df_filtered)
             
@@ -1051,7 +1049,7 @@ elif menu == "استعراض البيانات والداشبورد":
                     "عدد حالات رضاعة طبيعية مطلقة 6 شهور",
                     "عدد حالات التحويل الى عيادة تنظيم الاسرة"
                 ],
-                "عدد الحالات (حسب التاريخ المفلتر)": [
+                "عدد الحالات (خلال الفترة المحددة)": [
                     total_children,
                     nursery_count,
                     skin_count,
@@ -1077,7 +1075,7 @@ elif menu == "استعراض البيانات والداشبورد":
         st.download_button(
             label="📊 تحميل البيانات الحالية بصيغة Excel (XLSX)",
             data=excel_data,
-            file_name=f"report_{sheet_to_show}_{datetime.date.today()}.xlsx",
+            file_name=f"report_{sheet_to_show}_{start_date}_to_{end_date}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )

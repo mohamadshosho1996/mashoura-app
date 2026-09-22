@@ -1051,19 +1051,19 @@ elif menu == "استعراض البيانات والداشبورد":
     df_view = load_sheet_df(sheet_to_show)
 
     st.markdown("---")
-    st.markdown("### 📅 أدخل التواريخ للفلترة وحساب المؤشرات التفاعلية")
+    st.markdown("### 📅 أدخل تريخ التسجيل للفلترة وحساب المؤشرات التفاعلية")
     
     col_f1, col_f2 = st.columns(2)
     with col_f1:
-        start_date = st.date_input("من تاريخ بداية البحث:", value=datetime.date(2025, 1, 1), key="manual_start_date")
+        start_date = st.date_input("من تاريخ التسجيل (البداية):", value=datetime.date(2025, 1, 1), key="manual_start_date")
     with col_f2:
-        end_date = st.date_input("إلى تاريخ نهاية البحث:", value=datetime.date.today(), key="manual_end_date")
+        end_date = st.date_input("إلى تاريخ التسجيل (النهاية):", value=datetime.date.today(), key="manual_end_date")
 
     if not df_view.empty:
-        date_col_candidates = ["التاريخ الزيارة", "تاريخ التسجيل", "تاريخ اول زيارة"]
-        selected_date_col = next((c for c in date_col_candidates if c in df_view.columns), None)
+        # ربط الفلترة بـ "تاريخ التسجيل" حصرياً كما طلبت
+        selected_date_col = "تاريخ التسجيل"
         
-        if selected_date_col:
+        if selected_date_col in df_view.columns:
             try:
                 df_view['parsed_date'] = pd.to_datetime(df_view[selected_date_col], errors='coerce').dt.date
                 mask = (df_view['parsed_date'] >= start_date) & (df_view['parsed_date'] <= end_date)
@@ -1080,7 +1080,7 @@ elif menu == "استعراض البيانات والداشبورد":
             st.markdown(f"""
                 <div class="metric-card">
                     <h3>{len(df_filtered)}</h3>
-                    <p>إجمالي الحالات للفترة المحددة</p>
+                    <p>إجمالي الحالات المسجلة للفترة المحددة</p>
                 </div>
             """, unsafe_allow_html=True)
         with kpi2:
@@ -1116,13 +1116,13 @@ elif menu == "استعراض البيانات والداشبورد":
 
             summary_pregnant_data = {
                 "البيان / المؤشر": [
-                    "اجمالى الحالات",
+                    "اجمالى الحالات المسجلة",
                     "عدد حالات المتابعة الدورية للحمل",
                     "عدد الولادة الطبيعية",
                     "عدد الولادة القيصرية",
                     "اجمالى عدد حالات وسيلة تنظيم الاسرة المستخدمة سابقا"
                 ],
-                "عدد الحالات (خلال الفترة المحددة)": [
+                "عدد الحالات (خلال فترة التسجيل المحددة)": [
                     total_pregnant,
                     followup_count,
                     nat_birth_count,
@@ -1136,7 +1136,7 @@ elif menu == "استعراض البيانات والداشبورد":
                 fig_birth = px.pie(
                     names=["طبيعي", "قيصري", "أخرى"],
                     values=[nat_birth_count, ces_birth_count, max(0, total_pregnant - nat_birth_count - ces_birth_count)],
-                    title="توزيع أنواع الولادة للحوامل",
+                    title="توزيع أنواع الولادة للحوامل حسب تاريخ التسجيل",
                     color_discrete_sequence=px.colors.qualitative.Pastel
                 )
                 st.plotly_chart(fig_birth, use_container_width=True)
@@ -1194,7 +1194,7 @@ elif menu == "استعراض البيانات والداشبورد":
                     </div>
                 """, unsafe_allow_html=True)
 
-            # --- التعديل الجذري الجديد: أزرار تفاعلية وشيت مخصص لكل معدل نمو ---
+            # أزرار تفاعلية وشيت مخصص لكل معدل نمو
             st.markdown("#### 📂 استعراض شيتات بيانات الأطفال حسب معدل النمو (اضغط أدناه لعرض الشيت):")
             growth_tab_choice = st.radio(
                 "اختر فئة معدل النمو لفتح الشيت الخاص به:",
@@ -1214,10 +1214,9 @@ elif menu == "استعراض البيانات والداشبورد":
 
                 st.markdown(f"### 📑 الشيت التفصيلي لقائمة الأطفال: `{growth_tab_choice}` (العدد: `{len(sub_df)}` حالة)")
                 if not sub_df.empty:
-                    display_cols = [c for c in ["اسم الام", "الرقم القومى للام", "اسم الطفل", "العمر الحالى للطفل (شهور)", "الوزن (كجم)", "الطول (سم)", "محيط الرأس (سم)", "تاريخ الزيارة", "اسم المستخدم"] if c in sub_df.columns]
+                    display_cols = [c for c in ["اسم الام", "الرقم القومى للام", "اسم الطفل", "العمر الحالى للطفل (شهور)", "الوزن (كجم)", "الطول (سم)", "محيط الرأس (سم)", "تاريخ التسجيل", "اسم المستخدم"] if c in sub_df.columns]
                     st.dataframe(sub_df[display_cols], use_container_width=True)
 
-                    # زر تحميل خاص بالشيت الفرعي المحدد
                     sub_output = BytesIO()
                     with pd.ExcelWriter(sub_output, engine='openpyxl') as writer:
                         sub_df.to_excel(writer, index=False, sheet_name='Growth_Sheet')
@@ -1226,14 +1225,13 @@ elif menu == "استعراض البيانات والداشبورد":
                     st.download_button(
                         label=f"📥 تحميل شيت ({growth_tab_choice}) بصيغة Excel",
                         data=sub_excel_data,
-                        file_name=f"sheet_{chosen_target_status}_{start_date}_to_{end_date}.xlsx",
+                        file_name=f"sheet_{chosen_target_status}_reg_{start_date}_to_{end_date}.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         use_container_width=True
                     )
                 else:
-                    st.info(f"لا توجد حالات مسجلة ضمن فئة ({growth_tab_choice}) في الفترة المحددة.")
+                    st.info(f"لا توجد حالات مسجلة ضمن فئة ({growth_tab_choice}) في فترة التسجيل المحددة.")
 
-            # فلتر تفاعلي تقليدي للجدول العام
             selected_growth_filter = st.selectbox(
                 "🔎 أو فلترة جدول الأطفال العام حسب حالة النمو:",
                 ["الكل", "طبيعى", "متأخر", "متقدم", "غير مكتمل"]
@@ -1243,12 +1241,11 @@ elif menu == "استعراض البيانات والداشبورد":
             if selected_growth_filter != "الكل":
                 df_display_table = df_display_table[df_display_table['حالة_النمو_المقيمة'] == selected_growth_filter]
 
-            # رسم بياني دائري لتوزيع حالات النمو
             if len(df_filtered) > 0:
                 fig_growth = px.pie(
                     names=["طبيعي", "متأخر", "متقدم", "غير مكتمل"],
                     values=[normal_count, delayed_count, advanced_count, incomplete_count],
-                    title="توزيع معدلات نمو الأطفال مقارنة بالمعدلات العالمية",
+                    title="توزيع معدلات نمو الأطفال مقارنة بالمعدلات العالمية حسب تاريخ التسجيل",
                     color_discrete_map={"طبيعي": "#10B981", "متأخر": "#EF4444", "متقدم": "#3B82F6", "غير مكتمل": "#9CA3AF"}
                 )
                 st.plotly_chart(fig_growth, use_container_width=True)
@@ -1261,7 +1258,7 @@ elif menu == "استعراض البيانات والداشبورد":
 
             summary_table_data = {
                 "البيان / المؤشر": [
-                    "إجمالي عدد حالات الاطفال",
+                    "إجمالي عدد حالات الاطفال المسجلة",
                     "عدد حالات دخول الحضانه",
                     "عدد حالات ملامسة الجلد فى الساعه الذهبية الاولى",
                     "عدد حالات الرضاعه الطبيعيه فى الساعه الذهبية الاولى",
@@ -1270,7 +1267,7 @@ elif menu == "استعراض البيانات والداشبورد":
                     "عدد الأطفال بمعدل نمو متأخر ⚠️",
                     "عدد الأطفال بمعدل نمو متقدم 🌟"
                 ],
-                "عدد الحالات (خلال الفترة المحددة)": [
+                "عدد الحالات (خلال فترة التسجيل المحددة)": [
                     total_children,
                     nursery_count,
                     skin_count,
@@ -1300,13 +1297,13 @@ elif menu == "استعراض البيانات والداشبورد":
         st.download_button(
             label="📊 تحميل التقرير الحالي بصيغة Excel (XLSX)",
             data=excel_data,
-            file_name=f"report_{sheet_to_show}_{start_date}_to_{end_date}.xlsx",
+            file_name=f"report_{sheet_to_show}_reg_{start_date}_to_{end_date}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
 
         st.markdown("---")
-        st.subheader("👥 إحصائيات عدد الحالات لكل طبيبة خلال الفترة")
+        st.subheader("👥 إحصائيات عدد الحالات لكل طبيبة حسب تاريخ التسجيل")
         user_col = "اسم المستخدم"
         if user_col in df_filtered.columns and not df_filtered.empty:
             user_counts = df_filtered[user_col].value_counts().reset_index()
@@ -1316,7 +1313,7 @@ elif menu == "استعراض البيانات والداشبورد":
                 user_counts, 
                 x="اسم الطبيبة/المستخدم", 
                 y="عدد الحالات", 
-                title="توزيع الحالات حسب الطبيبة المسجلة",
+                title="توزيع الحالات المسجلة حسب الطبيبة",
                 color="عدد الحالات",
                 color_continuous_scale="Pinkyl"
             )

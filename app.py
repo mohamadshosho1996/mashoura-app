@@ -46,7 +46,7 @@ h1, h2, h3 {
 }
 footer {visibility: hidden;}
 
-/* بطاقات المتاحة المؤشرات الجذابة */
+/* بطاقات المؤشرات الجذابة */
 .metric-card {
     background: linear-gradient(135deg, #ffffff 0%, #fff0f5 100%);
     padding: 20px;
@@ -1194,9 +1194,48 @@ elif menu == "استعراض البيانات والداشبورد":
                     </div>
                 """, unsafe_allow_html=True)
 
-            # فلتر تفاعلي لحصر وعرض الأطفال حسب حالة النمو
+            # --- التعديل الجذري الجديد: أزرار تفاعلية وشيت مخصص لكل معدل نمو ---
+            st.markdown("#### 📂 استعراض شيتات بيانات الأطفال حسب معدل النمو (اضغط أدناه لعرض الشيت):")
+            growth_tab_choice = st.radio(
+                "اختر فئة معدل النمو لفتح الشيت الخاص به:",
+                ["اختر للفحص والتفصيل...", "💚 النمو الطبيعي", "⚠️ النمو المتأخر", "🌟 النمو المتقدم", "📌 غير مكتمل القياسات"],
+                horizontal=True
+            )
+
+            if growth_tab_choice != "اختر للفحص والتفصيل...":
+                target_status_map = {
+                    "💚 النمو الطبيعي": "طبيعى",
+                    "⚠️ النمو المتأخر": "متأخر",
+                    "🌟 النمو المتقدم": "متقدم",
+                    "📌 غير مكتمل القياسات": "غير مكتمل"
+                }
+                chosen_target_status = target_status_map[growth_tab_choice]
+                sub_df = df_filtered[df_filtered['حالة_النمو_المقيمة'] == chosen_target_status]
+
+                st.markdown(f"### 📑 الشيت التفصيلي لقائمة الأطفال: `{growth_tab_choice}` (العدد: `{len(sub_df)}` حالة)")
+                if not sub_df.empty:
+                    display_cols = [c for c in ["اسم الام", "الرقم القومى للام", "اسم الطفل", "العمر الحالى للطفل (شهور)", "الوزن (كجم)", "الطول (سم)", "محيط الرأس (سم)", "تاريخ الزيارة", "اسم المستخدم"] if c in sub_df.columns]
+                    st.dataframe(sub_df[display_cols], use_container_width=True)
+
+                    # زر تحميل خاص بالشيت الفرعي المحدد
+                    sub_output = BytesIO()
+                    with pd.ExcelWriter(sub_output, engine='openpyxl') as writer:
+                        sub_df.to_excel(writer, index=False, sheet_name='Growth_Sheet')
+                    sub_excel_data = sub_output.getvalue()
+
+                    st.download_button(
+                        label=f"📥 تحميل شيت ({growth_tab_choice}) بصيغة Excel",
+                        data=sub_excel_data,
+                        file_name=f"sheet_{chosen_target_status}_{start_date}_to_{end_date}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True
+                    )
+                else:
+                    st.info(f"لا توجد حالات مسجلة ضمن فئة ({growth_tab_choice}) في الفترة المحددة.")
+
+            # فلتر تفاعلي تقليدي للجدول العام
             selected_growth_filter = st.selectbox(
-                "🔎 فلترة جدول الأطفال حسب حالة النمو:",
+                "🔎 أو فلترة جدول الأطفال العام حسب حالة النمو:",
                 ["الكل", "طبيعى", "متأخر", "متقدم", "غير مكتمل"]
             )
             
@@ -1245,7 +1284,6 @@ elif menu == "استعراض البيانات والداشبورد":
             st.markdown("---")
             st.table(pd.DataFrame(summary_table_data))
             
-            # اعتماد الجدول المعروض للفلترة
             df_filtered = df_display_table
 
         st.markdown("---")
@@ -1253,7 +1291,7 @@ elif menu == "استعراض البيانات والداشبورد":
         st.dataframe(df_filtered, use_container_width=True)
 
         st.markdown("---")
-        st.subheader("📥 تصدير التقارير المفلترة")
+        st.subheader("📥 تصدير التقارير المفلترة بالكامل")
         output = BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df_filtered.to_excel(writer, index=False, sheet_name='Sheet1')

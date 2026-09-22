@@ -1051,7 +1051,7 @@ elif menu == "استعراض البيانات والداشبورد":
     df_view = load_sheet_df(sheet_to_show)
 
     st.markdown("---")
-    st.markdown("### 📅 أدخل تريخ التسجيل للفلترة وحساب المؤشرات التفاعلية")
+    st.markdown("### 📅 أدخل تاريخ التسجيل للفلترة وحساب المؤشرات التفاعلية")
     
     col_f1, col_f2 = st.columns(2)
     with col_f1:

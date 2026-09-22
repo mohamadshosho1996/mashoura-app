@@ -943,7 +943,6 @@ elif menu == "سجل متابعة طفل (بحث متقدم)":
         if st.button("🔎 بحث عن سجل المتابعة", use_container_width=True):
             cleaned_search_id = clean_digits(search_nat_id, 14)
             
-            # تصفية البيانات
             filtered_df = df_children_all.copy()
             if cleaned_search_id:
                 if "الرقم القومى للام" in filtered_df.columns:
@@ -954,9 +953,8 @@ elif menu == "سجل متابعة طفل (بحث متقدم)":
                     filtered_df = filtered_df[filtered_df["اسم الطفل"].astype(str).str.contains(search_child_name.strip(), na=False, case=False)]
 
             if not filtered_df.empty:
-                st.success(, icon="🎉")
+                st.success("تم العثور على سجلات المتابعة بنجاح!")
                 
-                # بيانات الطفل العامة من أول سجل
                 first_row = filtered_df.iloc[0]
                 st.markdown("---")
                 st.markdown("### 📋 بيانات الأسرة والطفل الأساسية")
@@ -974,7 +972,6 @@ elif menu == "سجل متابعة طفل (بحث متقدم)":
                 st.markdown("---")
                 st.markdown("### 📈 سجل الزيارات ومعدل النمو التفصيلي لكل زيارة")
 
-                # ترتيب الزيارات حسب التاريخ إذا وجد
                 date_col_visit = "تاريخ الزيارة" if "تاريخ الزيارة" in filtered_df.columns else "تاريخ اول زيارة"
                 if date_col_visit in filtered_df.columns:
                     filtered_df['sort_date'] = pd.to_datetime(filtered_df[date_col_visit], errors='coerce')
@@ -990,7 +987,6 @@ elif menu == "سجل متابعة طفل (بحث متقدم)":
                     v_birth_w = row.get('وزن الطفل عند الولادة', '3.2')
                     v_birth_l = row.get('طول الطفل عند الولادة', '50')
 
-                    # تقييم النمو في هذه الزيارة
                     status, msg = evaluate_child_growth(v_birth_w, v_birth_l, v_weight, v_length, v_age)
 
                     with st.expander(f"📌 الزيارة رقم ({idx + 1}) - بتاريخ: {v_date} ({v_type})"):
@@ -1006,12 +1002,10 @@ elif menu == "سجل متابعة طفل (بحث متقدم)":
 
                         st.info(f"**تقييم النمو في هذه الزيارة:** {msg}")
                         
-                        # إظهار بعض الملاحظات والتوصيات إن وجدت
                         notes = row.get('ملاحظات/ توصيات', '')
                         if notes:
                             st.markdown(f"**ملاحظات الطبيبة:** {notes}")
                 
-                # جدول ملخص لكل الزيارات
                 st.markdown("---")
                 st.subheader("📊 جدول مقارنة الزيارات وتطور القياسات")
                 cols_to_show = [col for col in [date_col_visit, 'موعد الزيارة', 'العمر الحالى للطفل (شهور)', 'الوزن (كجم)', 'الطول (سم)', 'محيط الرأس (سم)', 'اسم المستخدم'] if col in filtered_df.columns]

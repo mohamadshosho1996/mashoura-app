@@ -4,6 +4,8 @@ import pandas as pd
 import streamlit as st
 from supabase import create_client, Client
 from io import BytesIO
+import plotly.express as px
+import plotly.graph_objects as go
 
 # ==================== إعدادات الصفحة والتصميم ====================
 st.set_page_config(
@@ -26,20 +28,45 @@ custom_css = """
 .stButton>button {
     background-color: #EC4899;
     color: white;
-    border-radius: 8px;
+    border-radius: 10px;
     font-weight: bold;
     border: none;
-    padding: 0.5rem 1rem;
+    padding: 0.6rem 1.2rem;
     width: 100%;
+    box-shadow: 0 4px 6px rgba(236, 72, 153, 0.2);
+    transition: all 0.3s ease;
 }
 .stButton>button:hover {
     background-color: #BE185D;
-    color: white;
+    box-shadow: 0 6px 12px rgba(190, 24, 93, 0.3);
+    transform: translateY(-2px);
 }
 h1, h2, h3 {
     color: #701A75;
 }
 footer {visibility: hidden;}
+
+/* بطاقات المتاحة المؤشرات الجذابة */
+.metric-card {
+    background: linear-gradient(135deg, #ffffff 0%, #fff0f5 100%);
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(112, 26, 117, 0.08);
+    border: 1px solid #fbcfe8;
+    text-align: center;
+    margin-bottom: 15px;
+}
+.metric-card h3 {
+    color: #be185d;
+    margin: 0;
+    font-size: 24px;
+}
+.metric-card p {
+    color: #701a75;
+    margin: 5px 0 0 0;
+    font-size: 14px;
+    font-weight: 600;
+}
 
 /* تصميم القلب المنشق بإنميشن السهم */
 .heart-overlay {
@@ -593,7 +620,7 @@ st.markdown("---")
 # ==================== 1. الصفحة الرئيسية ====================
 if menu == "الصفحة الرئيسية":
     st.markdown("<h1>✨ مرحباً بكِ في نظام المشورة الأسرية الشامل (Supabase) ✨</h1>", unsafe_allow_html=True)
-    st.write("تم ربط البرنامج بنجاح مع قاعدة بيانات Supabase السحابية وتطابق كافة الحقول التفصيلية مع إمكانية عمل سجل متابعة تفاعلي ومخصص لكل طفل.")
+    st.write("تم ربط البرنامج بنجاح مع قاعدة بيانات Supabase السحابية مع لوحة تحكم تفاعلية ومحترفة مدعومة بتحليلات شاملة لمعدلات نمو الأطفال وتطورهم.")
 
 # ==================== 2. سجل الحوامل ====================
 elif menu == "سجل الحوامل":
@@ -926,7 +953,7 @@ elif menu == "سجل الأطفال":
                     st.session_state[f"c_{col}"] = today_str if col in ["تاريخ الزيارة", "تاريخ اول زيارة"] else ""
             st.rerun()
 
-# ==================== 4. سجل متابعة طفل (بحث متقدم جديد) ====================
+# ==================== 4. سجل متابعة طفل (بحث متقدم) ====================
 elif menu == "سجل متابعة طفل (بحث متقدم)":
     st.markdown("<h2>🔍 سجل ومتابعة نمو طفل (بحث متقدم)</h2>", unsafe_allow_html=True)
     st.write("ابحث بالرقم القومي للأم واسم الطفل لاستخراج نموذج متابعة تفاعلي يوضح كافة الزيارات، الأوزان، الأطوال، ومعدلات النمو لكل زيارة على حدة.")
@@ -1018,13 +1045,13 @@ elif menu == "سجل متابعة طفل (بحث متقدم)":
 
 # ==================== 5. استعراض البيانات والداشبورد ====================
 elif menu == "استعراض البيانات والداشبورد":
-    st.markdown("<h2>📊 لوحة المؤشرات واستعراض البيانات</h2>", unsafe_allow_html=True)
+    st.markdown("<h2>📊 لوحة المؤشرات المتفاعلة والداشبورد الاحترافية</h2>", unsafe_allow_html=True)
     
     sheet_to_show = st.selectbox("اختر السجل للاستعراض:", ["المشورة الاسرية للحامل", "سجل المشورة للاطفال"])
     df_view = load_sheet_df(sheet_to_show)
 
     st.markdown("---")
-    st.markdown("### 📅 أدخل التواريخ بنفسك للفلترة وحساب المؤشرات المطلوبة")
+    st.markdown("### 📅 أدخل التواريخ للفلترة وحساب المؤشرات التفاعلية")
     
     col_f1, col_f2 = st.columns(2)
     with col_f1:
@@ -1046,37 +1073,51 @@ elif menu == "استعراض البيانات والداشبورد":
         else:
             df_filtered = df_view.copy()
 
-        st.info(f"عدد الحالات المطابقة للفترة الزمنية التي أدخلتها (من {start_date} إلى {end_date}): **{len(df_filtered)}** حالة")
-        
+        # عرض بطاقات مؤشرات رئيسية (KPI Cards) مبهرة
+        st.markdown("---")
+        kpi1, kpi2, kpi3 = st.columns(3)
+        with kpi1:
+            st.markdown(f"""
+                <div class="metric-card">
+                    <h3>{len(df_filtered)}</h3>
+                    <p>إجمالي الحالات للفترة المحددة</p>
+                </div>
+            """, unsafe_allow_html=True)
+        with kpi2:
+            unique_users = df_filtered["اسم المستخدم"].nunique() if "اسم المستخدم" in df_filtered.columns else 0
+            st.markdown(f"""
+                <div class="metric-card">
+                    <h3>{unique_users}</h3>
+                    <p>عدد الطبيبات المشاركات</p>
+                </div>
+            """, unsafe_allow_html=True)
+        with kpi3:
+            st.markdown(f"""
+                <div class="metric-card">
+                    <h3>{sheet_to_show}</h3>
+                    <p>القسم النشط حالياً</p>
+                </div>
+            """, unsafe_allow_html=True)
+
         if sheet_to_show == "المشورة الاسرية للحامل":
             st.markdown("---")
-            st.subheader("📈 مؤشرات المشورة الأسرية للحامل (حسب تواريخك المحددة)")
+            st.subheader("📈 مؤشرات المشورة الأسرية للحامل")
             
             total_pregnant = len(df_filtered)
-            
             followup_col = "المتابعة الدورية للحمل"
-            followup_count = 0
-            if followup_col in df_filtered.columns:
-                followup_count = df_filtered[followup_col].astype(str).str.strip().isin(["تم", "نعم"]).sum()
+            followup_count = df_filtered[followup_col].astype(str).str.strip().isin(["تم", "نعم"]).sum() if followup_col in df_filtered.columns else 0
 
-            nat_birth_count = 0
             birth_col = "نوع الولادة"
-            if birth_col in df_filtered.columns:
-                nat_birth_count = (df_filtered[birth_col].astype(str).str.strip() == "طبيعى").sum()
-
-            ces_birth_count = 0
-            if birth_col in df_filtered.columns:
-                ces_birth_count = (df_filtered[birth_col].astype(str).str.strip() == "قيصرى").sum()
+            nat_birth_count = (df_filtered[birth_col].astype(str).str.strip() == "طبيعى").sum() if birth_col in df_filtered.columns else 0
+            ces_birth_count = (df_filtered[birth_col].astype(str).str.strip() == "قيصرى").sum() if birth_col in df_filtered.columns else 0
 
             prev_fp_col = "وسيلة تنظيم الأسرة المستخدمة سابق"
-            prev_fp_count = 0
-            if prev_fp_col in df_filtered.columns:
-                prev_fp_count = df_filtered[prev_fp_col].astype(str).str.strip().isin(["توجد", "مرغوب", "تم", "نعم"]).sum()
+            prev_fp_count = df_filtered[prev_fp_col].astype(str).str.strip().isin(["توجد", "مرغوب", "تم", "نعم"]).sum() if prev_fp_col in df_filtered.columns else 0
 
             summary_pregnant_data = {
                 "البيان / المؤشر": [
                     "اجمالى الحالات",
-                    "عدد حالات المتابعة الدورية للحامل",
+                    "عدد حالات المتابعة الدورية للحمل",
                     "عدد الولادة الطبيعية",
                     "عدد الولادة القيصرية",
                     "اجمالى عدد حالات وسيلة تنظيم الاسرة المستخدمة سابقا"
@@ -1089,42 +1130,95 @@ elif menu == "استعراض البيانات والداشبورد":
                     prev_fp_count
                 ]
             }
-            df_summary_pregnant = pd.DataFrame(summary_pregnant_data)
-            st.table(df_summary_pregnant)
+            st.table(pd.DataFrame(summary_pregnant_data))
+
+            if birth_col in df_filtered.columns and total_pregnant > 0:
+                fig_birth = px.pie(
+                    names=["طبيعي", "قيصري", "أخرى"],
+                    values=[nat_birth_count, ces_birth_count, max(0, total_pregnant - nat_birth_count - ces_birth_count)],
+                    title="توزيع أنواع الولادة للحوامل",
+                    color_discrete_sequence=px.colors.qualitative.Pastel
+                )
+                st.plotly_chart(fig_birth, use_container_width=True)
 
         elif sheet_to_show == "سجل المشورة للاطفال":
             st.markdown("---")
-            st.subheader("📈 مؤشرات سجل الأطفال (حسب تواريخك المحددة)")
+            st.subheader("👶 لوحة مؤشرات وحصر نمو الأطفال المتفاعلة")
             
+            # حساب وتصنيف نمو الأطفال لكل حالة في الداشبورد
+            growth_status_list = []
+            for _, row in df_filtered.iterrows():
+                bw = row.get("وزن الطفل عند الولادة", "")
+                bl = row.get("طول الطفل عند الولادة", "")
+                cw = row.get("الوزن (كجم)", "")
+                cl = row.get("الطول (سم)", "")
+                age_s = row.get("العمر الحالى للطفل (شهور)", "")
+                status, _ = evaluate_child_growth(bw, bl, cw, cl, age_s)
+                growth_status_list.append(status)
+            
+            df_filtered['حالة_النمو_المقيمة'] = growth_status_list
+
+            # حصر الأعداد حسب معدل النمو
+            normal_count = (df_filtered['حالة_النمو_المقيمة'] == 'طبيعى').sum()
+            delayed_count = (df_filtered['حالة_النمو_المقيمة'] == 'متأخر').sum()
+            advanced_count = (df_filtered['حالة_النمو_المقيمة'] == 'متقدم').sum()
+            incomplete_count = (df_filtered['حالة_النمو_المقيمة'] == 'غير مكتمل').sum()
+
+            c_g1, c_g2, c_g3, c_g4 = st.columns(4)
+            with c_g1:
+                st.markdown(f"""
+                    <div class="metric-card" style="border-color: #10B981;">
+                        <h3 style="color: #10B981;">💚 {normal_count}</h3>
+                        <p>معدل نمو طبيعي</p>
+                    </div>
+                """, unsafe_allow_html=True)
+            with c_g2:
+                st.markdown(f"""
+                    <div class="metric-card" style="border-color: #EF4444;">
+                        <h3 style="color: #EF4444;">⚠️ {delayed_count}</h3>
+                        <p>معدل نمو متأخر</p>
+                    </div>
+                """, unsafe_allow_html=True)
+            with c_g3:
+                st.markdown(f"""
+                    <div class="metric-card" style="border-color: #3B82F6;">
+                        <h3 style="color: #3B82F6;">🌟 {advanced_count}</h3>
+                        <p>معدل نمو متقدم</p>
+                    </div>
+                """, unsafe_allow_html=True)
+            with c_g4:
+                st.markdown(f"""
+                    <div class="metric-card" style="border-color: #6B7280;">
+                        <h3 style="color: #6B7280;">📌 {incomplete_count}</h3>
+                        <p>بيانات غير مكتملة</p>
+                    </div>
+                """, unsafe_allow_html=True)
+
+            # فلتر تفاعلي لحصر وعرض الأطفال حسب حالة النمو
+            selected_growth_filter = st.selectbox(
+                "🔎 فلترة جدول الأطفال حسب حالة النمو:",
+                ["الكل", "طبيعى", "متأخر", "متقدم", "غير مكتمل"]
+            )
+            
+            df_display_table = df_filtered.copy()
+            if selected_growth_filter != "الكل":
+                df_display_table = df_display_table[df_display_table['حالة_النمو_المقيمة'] == selected_growth_filter]
+
+            # رسم بياني دائري لتوزيع حالات النمو
+            if len(df_filtered) > 0:
+                fig_growth = px.pie(
+                    names=["طبيعي", "متأخر", "متقدم", "غير مكتمل"],
+                    values=[normal_count, delayed_count, advanced_count, incomplete_count],
+                    title="توزيع معدلات نمو الأطفال مقارنة بالمعدلات العالمية",
+                    color_discrete_map={"طبيعي": "#10B981", "متأخر": "#EF4444", "متقدم": "#3B82F6", "غير مكتمل": "#9CA3AF"}
+                )
+                st.plotly_chart(fig_growth, use_container_width=True)
+
             total_children = len(df_filtered)
-            
-            nursery_col = "دخول الحضانة"
-            nursery_count = 0
-            if nursery_col in df_filtered.columns:
-                nursery_count = df_filtered[nursery_col].astype(str).str.strip().isin(["تم", "نعم"]).sum()
-
-            skin_col = "ملامسة الجلد فى الساعة الذهبية الأ"
-            skin_count = 0
-            if skin_col in df_filtered.columns:
-                skin_count = df_filtered[skin_col].astype(str).str.strip().isin(["تم", "نعم"]).sum()
-
-            bf_golden_col = "الرضاعة الطبيعية فى الساعة الذهبي"
-            bf_golden_count = 0
-            if bf_golden_col in df_filtered.columns:
-                bf_golden_count = df_filtered[bf_golden_col].astype(str).str.strip().isin(["تم", "نعم"]).sum()
-
-            bf_ex_col = "رضاعة طبيعية مطلقة"
-            bf_6m_count = 0
-            if bf_ex_col in df_filtered.columns:
-                bf_6m_count = (df_filtered[bf_ex_col].astype(str).str.strip() == "6 شهور").sum()
-
-            family_plan_count = 0
-            fp_col1 = "أهمية إستخدام وسيلة تنظيم أسرة وأه"
-            fp_col2 = "نصيحة"
-            if fp_col1 in df_filtered.columns:
-                family_plan_count += df_filtered[fp_col1].astype(str).str.strip().isin(["تم", "نعم"]).sum()
-            elif fp_col2 in df_filtered.columns:
-                family_plan_count += df_filtered[fp_col2].astype(str).str.strip().isin(["تم", "نعم"]).sum()
+            nursery_count = df_filtered["دخول الحضانة"].astype(str).str.strip().isin(["تم", "نعم"]).sum() if "دخول الحضانة" in df_filtered.columns else 0
+            skin_count = df_filtered["ملامسة الجلد فى الساعة الذهبية الأ"].astype(str).str.strip().isin(["تم", "نعم"]).sum() if "ملامسة الجلد فى الساعة الذهبية الأ" in df_filtered.columns else 0
+            bf_golden_count = df_filtered["الرضاعة الطبيعية فى الساعة الذهبي"].astype(str).str.strip().isin(["تم", "نعم"]).sum() if "الرضاعة الطبيعية فى الساعة الذهبي" in df_filtered.columns else 0
+            bf_6m_count = (df_filtered["رضاعة طبيعية مطلقة"].astype(str).str.strip() == "6 شهور").sum() if "رضاعة طبيعية مطلقة" in df_filtered.columns else 0
 
             summary_table_data = {
                 "البيان / المؤشر": [
@@ -1133,7 +1227,9 @@ elif menu == "استعراض البيانات والداشبورد":
                     "عدد حالات ملامسة الجلد فى الساعه الذهبية الاولى",
                     "عدد حالات الرضاعه الطبيعيه فى الساعه الذهبية الاولى",
                     "عدد حالات رضاعة طبيعية مطلقة 6 شهور",
-                    "عدد حالات التحويل الى عيادة تنظيم الاسرة"
+                    "عدد الأطفال بمعدل نمو طبيعي 🟢",
+                    "عدد الأطفال بمعدل نمو متأخر ⚠️",
+                    "عدد الأطفال بمعدل نمو متقدم 🌟"
                 ],
                 "عدد الحالات (خلال الفترة المحددة)": [
                     total_children,
@@ -1141,25 +1237,30 @@ elif menu == "استعراض البيانات والداشبورد":
                     skin_count,
                     bf_golden_count,
                     bf_6m_count,
-                    family_plan_count
+                    normal_count,
+                    delayed_count,
+                    advanced_count
                 ]
             }
-            df_summary = pd.DataFrame(summary_table_data)
-            st.table(df_summary)
+            st.markdown("---")
+            st.table(pd.DataFrame(summary_table_data))
+            
+            # اعتماد الجدول المعروض للفلترة
+            df_filtered = df_display_table
 
         st.markdown("---")
-        st.subheader("📋 الجدول التفصيلي للبيانات")
+        st.subheader("📋 الجدول التفصيلي للبيانات والنتائج")
         st.dataframe(df_filtered, use_container_width=True)
 
         st.markdown("---")
-        st.subheader("📥 تصدير البيانات")
+        st.subheader("📥 تصدير التقارير المفلترة")
         output = BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             df_filtered.to_excel(writer, index=False, sheet_name='Sheet1')
         excel_data = output.getvalue()
 
         st.download_button(
-            label="📊 تحميل البيانات الحالية بصيغة Excel (XLSX)",
+            label="📊 تحميل التقرير الحالي بصيغة Excel (XLSX)",
             data=excel_data,
             file_name=f"report_{sheet_to_show}_{start_date}_to_{end_date}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1167,12 +1268,21 @@ elif menu == "استعراض البيانات والداشبورد":
         )
 
         st.markdown("---")
-        st.subheader("👥 إحصائيات عدد الحالات لكل مستخدم خلال الفترة")
-        user_col_candidates = ["اسم المستخدم"]
-        user_col = next((c for c in user_col_candidates if c in df_filtered.columns), None)
-        if user_col and not df_filtered.empty:
+        st.subheader("👥 إحصائيات عدد الحالات لكل طبيبة خلال الفترة")
+        user_col = "اسم المستخدم"
+        if user_col in df_filtered.columns and not df_filtered.empty:
             user_counts = df_filtered[user_col].value_counts().reset_index()
-            user_counts.columns = ["اسم المستخدم", "عدد الحالات"]
+            user_counts.columns = ["اسم الطبيبة/المستخدم", "عدد الحالات"]
+            
+            fig_users = px.bar(
+                user_counts, 
+                x="اسم الطبيبة/المستخدم", 
+                y="عدد الحالات", 
+                title="توزيع الحالات حسب الطبيبة المسجلة",
+                color="عدد الحالات",
+                color_continuous_scale="Pinkyl"
+            )
+            st.plotly_chart(fig_users, use_container_width=True)
             st.dataframe(user_counts, use_container_width=True)
         else:
             st.write("لا توجد بيانات كافية لعرض إحصائيات المستخدمين.")

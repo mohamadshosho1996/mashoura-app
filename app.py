@@ -934,7 +934,7 @@ elif menu == "استعراض البيانات والداشبورد":
 
     if not df_view.empty:
         st.markdown("---")
-        st.subheader("📅 فلترة الحالات حسب الفترة الزمنية")
+        st.subheader("📅 فلترة الحالات حسب الفترة الزمنية (تحديد تاريخ بداية وتاريخ نهاية البحث)")
         
         date_col_candidates = ["التاريخ الزيارة", "تاريخ التسجيل", "تاريخ اول زيارة"]
         selected_date_col = next((c for c in date_col_candidates if c in df_view.columns), None)
@@ -949,9 +949,9 @@ elif menu == "استعراض البيانات والداشبورد":
 
                 col_f1, col_f2 = st.columns(2)
                 with col_f1:
-                    start_date = st.date_input("من تاريخ", value=min_d)
+                    start_date = st.date_input("زر تحديد تاريخ بداية البحث (من تاريخ):", value=min_d, key="search_start_date")
                 with col_f2:
-                    end_date = st.date_input("إلى تاريخ", value=max_d)
+                    end_date = st.date_input("زر تحديد تاريخ نهاية البحث (إلى تاريخ):", value=max_d, key="search_end_date")
 
                 mask = (df_view['parsed_date'] >= start_date) & (df_view['parsed_date'] <= end_date)
                 df_filtered = df_view.loc[mask].drop(columns=['parsed_date'])
@@ -962,8 +962,53 @@ elif menu == "استعراض البيانات والداشبورد":
 
         st.info(f"عدد الحالات المطابقة للفترة المحددة: **{len(df_filtered)}** حالة")
         
-        # عرض الجدول الإحصائي المخصص لسجل الأطفال (المكون من عمودين و 6 صفوف طبقاً للتاريخ المُفلتر)
-        if sheet_to_show == "سجل المشورة للاطفال":
+        # عرض الجدول الإحصائي المخصص لسجل الحوامل (المكون من عمودين وخمس صفوف حسب الطلب)
+        if sheet_to_show == "المشورة الاسرية للحامل":
+            st.markdown("---")
+            st.subheader("📈 مؤشرات المشورة الأسرية للحامل (حسب الفترة المفلترة)")
+            
+            total_pregnant = len(df_filtered)
+            
+            followup_col = "المتابعة الدورية للحمل"
+            followup_count = 0
+            if followup_col in df_filtered.columns:
+                followup_count = df_filtered[followup_col].astype(str).str.strip().isin(["تم", "نعم"]).sum()
+
+            nat_birth_count = 0
+            birth_col = "نوع الولادة"
+            if birth_col in df_filtered.columns:
+                nat_birth_count = (df_filtered[birth_col].astype(str).str.strip() == "طبيعى").sum()
+
+            ces_birth_count = 0
+            if birth_col in df_filtered.columns:
+                ces_birth_count = (df_filtered[birth_col].astype(str).str.strip() == "قيصرى").sum()
+
+            prev_fp_col = "وسيلة تنظيم الأسرة المستخدمة سابق"
+            prev_fp_count = 0
+            if prev_fp_col in df_filtered.columns:
+                prev_fp_count = df_filtered[prev_fp_col].astype(str).str.strip().isin(["توجد", "مرغوب", "تم", "نعم"]).sum()
+
+            summary_pregnant_data = {
+                "البيان / المؤشر": [
+                    "اجمالى الحالات",
+                    "عدد حالات المتابعة الدورية للحامل",
+                    "عدد الولادة الطبيعية",
+                    "عدد الولادة القيصرية",
+                    "اجمالى عدد حالات وسيلة تنظيم الاسرة المستخدمة سابقا"
+                ],
+                "عدد الحالات (حسب التاريخ المفلتر)": [
+                    total_pregnant,
+                    followup_count,
+                    nat_birth_count,
+                    ces_birth_count,
+                    prev_fp_count
+                ]
+            }
+            df_summary_pregnant = pd.DataFrame(summary_pregnant_data)
+            st.table(df_summary_pregnant)
+
+        # عرض الجدول الإحصائي المخصص لسجل الأطفال (المكون من عمودين و 6 صفوف)
+        elif sheet_to_show == "سجل المشورة للاطفال":
             st.markdown("---")
             st.subheader("📈 مؤشرات سجل الأطفال (حسب الفترة المفلترة)")
             
